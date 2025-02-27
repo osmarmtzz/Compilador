@@ -9,52 +9,107 @@ namespace IDE_COMPILADOR
     public partial class MainForm : Form
     {
         private string currentFilePath = string.Empty;
-        private RichTextBox txtEditor;
-        private RichTextBox txtOutput; // Nuevo RichTextBox para la salida
-        private Panel lineNumberPanel;
-        private Label lblStatus;
-        private MenuStrip menuStrip;
-        private TreeView fileExplorer;
-        private Panel panelFileExplorer; // Panel lateral derecho para el explorador de archivos
-        private Button btnAgregarArchivo; // Botón para agregar archivos
-        private SplitContainer splitContainer;
 
         public MainForm()
         {
             InitializeComponent();
             InitializeMenu();
-            InitializeEditor();
-            InitializeFileExplorer(); // Inicializamos el panel lateral de archivos
-            this.components = new System.ComponentModel.Container();
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.WindowState = FormWindowState.Maximized;
-            this.Resize += new EventHandler(MainForm_Resize);
-            this.Text = "Compilador";
+            txtEditor.SelectionChanged += TxtEditor_SelectionChanged;
+        }
+        private void InitializeMenu()
+        {
+            Image openIcon = SystemIcons.Application.ToBitmap();  // Ícono genérico para "Open"
+            Image saveIcon = SystemIcons.Information.ToBitmap();  // Alternativa para "Save"
+            Image saveAsIcon = SystemIcons.Warning.ToBitmap();    // Alternativa para "Save As"
+
+            // ---------- MENÚ SUPERIOR (MenuStrip) ---------- //
+            menuStrip.Dock = DockStyle.Top;  // Asegura que el menú quede arriba
+
+            ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
+
+            ToolStripMenuItem openItem = new ToolStripMenuItem("Open", openIcon, (s, e) => OpenFile());
+            ToolStripMenuItem saveItem = new ToolStripMenuItem("Save", saveIcon, (s, e) => SaveFile());
+            ToolStripMenuItem saveAsItem = new ToolStripMenuItem("Save As", saveAsIcon, (s, e) => SaveFileAs());
+
+            fileMenu.DropDownItems.Add(openItem);
+            fileMenu.DropDownItems.Add(saveItem);
+            fileMenu.DropDownItems.Add(saveAsItem);
+            menuStrip.Items.Add(fileMenu);
+
+            // Menú Compilar (Compile)
+            ToolStripMenuItem compileMenu = new ToolStripMenuItem("Compile");
+            compileMenu.DropDownItems.Add("Lexical Analysis", null, (s, e) => CompilePhase("Lexical"));
+            compileMenu.DropDownItems.Add("Syntax Analysis", null, (s, e) => CompilePhase("Syntax"));
+            compileMenu.DropDownItems.Add("Semantic Analysis", null, (s, e) => CompilePhase("Semantic"));
+            compileMenu.DropDownItems.Add("Intermediate Code", null, (s, e) => CompilePhase("Intermediate"));
+            compileMenu.DropDownItems.Add("Execution", null, (s, e) => CompilePhase("Execution"));
+            menuStrip.Items.Add(compileMenu);
+
+            // Agregar el menú al formulario
+            this.Controls.Add(menuStrip);
+            this.MainMenuStrip = menuStrip;
+
+            // ---------- BARRA DE HERRAMIENTAS (ToolStrip) ---------- //
+            ToolStrip toolStrip = new ToolStrip();
+            toolStrip.Dock = DockStyle.None;  // NO usar DockStyle.Top, porque lo sobrepone al menuStrip
+            toolStrip.Location = new Point(0, menuStrip.Height); // Se coloca justo debajo del menú
+            toolStrip.ImageScalingSize = new Size(24, 24); // Tamaño de los iconos
+
+            // Crear botones del ToolStrip
+            ToolStripButton openButton = new ToolStripButton();
+            openButton.Image = openIcon;
+            openButton.ToolTipText = "Open File";
+            openButton.Click += (s, e) => OpenFile();
+
+            ToolStripButton saveButton = new ToolStripButton();
+            saveButton.Image = saveIcon;
+            saveButton.ToolTipText = "Save File";
+            saveButton.Click += (s, e) => SaveFile();
+
+            ToolStripButton saveAsButton = new ToolStripButton();
+            saveAsButton.Image = saveAsIcon;
+            saveAsButton.ToolTipText = "Save As";
+            saveAsButton.Click += (s, e) => SaveFileAs();
+
+            // Agregar botones al ToolStrip
+            toolStrip.Items.Add(openButton);
+            toolStrip.Items.Add(saveButton);
+            toolStrip.Items.Add(saveAsButton);
+
+            // Agregar la barra de herramientas al formulario
+            this.Controls.Add(toolStrip);
+        }
+
+
+        private void TxtEditor_SelectionChanged(object sender, EventArgs e)
+        {
+            UpdateLineColumn();
         }
 
         private void MainForm_Resize(object sender, EventArgs e)
         {
-            int outputHeight = 100; // Altura del panel de salida
+            // Evita que el código se ejecute en el diseñador
+            if (DesignMode) return;
 
-            // Actualizar posición y tamaño del panel del explorador de archivos
+            int outputHeight = 100;
+
             if (panelFileExplorer != null)
             {
                 panelFileExplorer.Size = new Size(200, this.ClientSize.Height - menuStrip.Height - lblStatus.Height - outputHeight);
                 panelFileExplorer.Location = new Point(this.ClientSize.Width - panelFileExplorer.Width, menuStrip.Height);
             }
 
-            // Actualizar el tamaño del editor y el panel de números de línea considerando el ancho del panel lateral
             int editorWidth = this.ClientSize.Width - lineNumberPanel.Width - (panelFileExplorer != null ? panelFileExplorer.Width : 0);
             int editorHeight = this.ClientSize.Height - menuStrip.Height - lblStatus.Height - outputHeight;
             txtEditor.Size = new Size(editorWidth, editorHeight);
             lineNumberPanel.Height = editorHeight;
 
-            // Ajustar la ubicación y tamaño del RichTextBox de salida
             txtOutput.Size = new Size(this.ClientSize.Width, outputHeight);
             txtOutput.Location = new Point(0, this.ClientSize.Height - outputHeight);
         }
 
-        private void InitializeMenu()
+
+        /*private void InitializeMenu()
         {
             menuStrip = new MenuStrip();
             this.MainMenuStrip = menuStrip;
@@ -163,7 +218,7 @@ namespace IDE_COMPILADOR
             fileExplorer.Dock = DockStyle.Fill;
             fileExplorer.NodeMouseDoubleClick += FileExplorer_NodeMouseDoubleClick;
             panelFileExplorer.Controls.Add(fileExplorer);
-        }
+        }*/
         private void BtnEliminarArchivo_Click(object sender, EventArgs e)
         {
             // Obtener el nodo seleccionado del TreeView
@@ -268,10 +323,14 @@ namespace IDE_COMPILADOR
 
         private void UpdateLineColumn()
         {
+            if (txtEditor == null || lblStatus == null)
+                return;
+
             int line = txtEditor.GetLineFromCharIndex(txtEditor.SelectionStart) + 1;
             int column = txtEditor.SelectionStart - txtEditor.GetFirstCharIndexOfCurrentLine() + 1;
             lblStatus.Text = $"Línea: {line}, Columna: {column}";
         }
+
 
         private void CompilePhase(string phase)
         {
