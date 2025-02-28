@@ -156,7 +156,7 @@
             // panelAnalysis
             // 
             this.panelAnalysis.Dock = System.Windows.Forms.DockStyle.Right;
-            this.panelAnalysis.Width = 400;
+            this.panelAnalysis.Width = 800;
             this.panelAnalysis.Name = "panelAnalysis";
             this.panelAnalysis.BackColor = System.Drawing.Color.DimGray;
 
