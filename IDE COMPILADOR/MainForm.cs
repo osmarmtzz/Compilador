@@ -1,8 +1,7 @@
 using System;
 using System.IO;
-using System.Windows.Forms;
 using System.Drawing;
-using System.Text;
+using System.Windows.Forms;
 
 namespace IDE_COMPILADOR
 {
@@ -13,239 +12,364 @@ namespace IDE_COMPILADOR
         public MainForm()
         {
             InitializeComponent();
-            InitializeMenu();
+
+            // Texto inicial en el editor:
+            txtEditor.Text = "Escriba aquí...";
+
+            // Eventos del editor
             txtEditor.SelectionChanged += TxtEditor_SelectionChanged;
+            txtEditor.TextChanged += TxtEditor_TextChanged;
+            txtEditor.VScroll += TxtEditor_VScroll;
+
+            // Evento de panel de números de línea
+            lineNumberPanel.Paint += LineNumberPanel_Paint;
+
+            // Eventos de explorador de archivos
+            btnAgregarArchivo.Click += BtnAgregarArchivo_Click;
+            btnEliminarArchivo.Click += BtnEliminarArchivo_Click;
+            fileExplorer.NodeMouseDoubleClick += FileExplorer_NodeMouseDoubleClick;
+
+            // Inicializaciones gráficas y lógicas
+            // (Opcional: Si deseas mantener el menú, déjalo; de lo contrario, puedes comentarlo)
+            InicializarMenuPersonalizado();
+
+            // ToolStrip: Agregamos los botones con íconos, tooltips y el nuevo botón "New Project"
+            InicializarToolStrip();
+
+            // Moderniza botones del explorador
+            ModernizarBotonesFileExplorer();
+
+            // TabControl inferior para errores/resultados
+            InicializarTabOutput();
         }
-        private void InitializeMenu()
+
+        #region Menú (Opcional)
+
+        private void InicializarMenuPersonalizado()
         {
-            Image openIcon = SystemIcons.Application.ToBitmap();  // Ícono genérico para "Open"
-            Image saveIcon = SystemIcons.Information.ToBitmap();  // Alternativa para "Save"
-            Image saveAsIcon = SystemIcons.Warning.ToBitmap();    // Alternativa para "Save As"
+            // Limpiamos cualquier ítem existente
+            menuStrip.Items.Clear();
 
-            // ---------- MENÚ SUPERIOR (MenuStrip) ---------- //
-            menuStrip.Dock = DockStyle.Top;  // Asegura que el menú quede arriba
+            // Íconos de ejemplo
+            Image openIcon = SystemIcons.Application.ToBitmap();
+            Image saveIcon = SystemIcons.Information.ToBitmap();
+            Image saveAsIcon = SystemIcons.Warning.ToBitmap();
 
+            // Menú "File"
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
+            fileMenu.DropDownItems.Add(new ToolStripMenuItem("Open", openIcon, (s, e) => OpenFile()));
+            fileMenu.DropDownItems.Add(new ToolStripMenuItem("Save", saveIcon, (s, e) => SaveFile()));
+            fileMenu.DropDownItems.Add(new ToolStripMenuItem("Save As", saveAsIcon, (s, e) => SaveFileAs()));
 
-            ToolStripMenuItem openItem = new ToolStripMenuItem("Open", openIcon, (s, e) => OpenFile());
-            ToolStripMenuItem saveItem = new ToolStripMenuItem("Save", saveIcon, (s, e) => SaveFile());
-            ToolStripMenuItem saveAsItem = new ToolStripMenuItem("Save As", saveAsIcon, (s, e) => SaveFileAs());
+            // Íconos para el menú "Compile"
+            Image lexicalIcon = SystemIcons.Information.ToBitmap();
+            Image syntaxIcon = SystemIcons.Question.ToBitmap();
+            Image semanticIcon = SystemIcons.Shield.ToBitmap();
+            Image intermediateIcon = SystemIcons.WinLogo.ToBitmap();
+            Image executionIcon = SystemIcons.Exclamation.ToBitmap();
 
-            fileMenu.DropDownItems.Add(openItem);
-            fileMenu.DropDownItems.Add(saveItem);
-            fileMenu.DropDownItems.Add(saveAsItem);
-            menuStrip.Items.Add(fileMenu);
-
-            // Menú Compilar (Compile)
+            // Menú "Compile"
             ToolStripMenuItem compileMenu = new ToolStripMenuItem("Compile");
-            compileMenu.DropDownItems.Add("Lexical Analysis", null, (s, e) => CompilePhase("Lexical"));
-            compileMenu.DropDownItems.Add("Syntax Analysis", null, (s, e) => CompilePhase("Syntax"));
-            compileMenu.DropDownItems.Add("Semantic Analysis", null, (s, e) => CompilePhase("Semantic"));
-            compileMenu.DropDownItems.Add("Intermediate Code", null, (s, e) => CompilePhase("Intermediate"));
-            compileMenu.DropDownItems.Add("Execution", null, (s, e) => CompilePhase("Execution"));
+            compileMenu.DropDownItems.Add(new ToolStripMenuItem("Lexical Analysis", lexicalIcon, (s, e) => EjecutarFase("Lexical Analysis")));
+            compileMenu.DropDownItems.Add(new ToolStripMenuItem("Syntax Analysis", syntaxIcon, (s, e) => EjecutarFase("Syntax Analysis")));
+            compileMenu.DropDownItems.Add(new ToolStripMenuItem("Semantic Analysis", semanticIcon, (s, e) => EjecutarFase("Semantic Analysis")));
+            compileMenu.DropDownItems.Add(new ToolStripMenuItem("Intermediate Code", intermediateIcon, (s, e) => EjecutarFase("Intermediate Code")));
+            compileMenu.DropDownItems.Add(new ToolStripMenuItem("Execution", executionIcon, (s, e) => EjecutarFase("Execution")));
+
+            // Agregamos ambos menús al menuStrip
+            menuStrip.Items.Add(fileMenu);
             menuStrip.Items.Add(compileMenu);
-
-            // Agregar el menú al formulario
-            this.Controls.Add(menuStrip);
-            this.MainMenuStrip = menuStrip;
-
-            // ---------- BARRA DE HERRAMIENTAS (ToolStrip) ---------- //
-            ToolStrip toolStrip = new ToolStrip();
-            toolStrip.Dock = DockStyle.None;  // NO usar DockStyle.Top, porque lo sobrepone al menuStrip
-            toolStrip.Location = new Point(0, menuStrip.Height); // Se coloca justo debajo del menú
-            toolStrip.ImageScalingSize = new Size(24, 24); // Tamaño de los iconos
-
-            // Crear botones del ToolStrip
-            ToolStripButton openButton = new ToolStripButton();
-            openButton.Image = openIcon;
-            openButton.ToolTipText = "Open File";
-            openButton.Click += (s, e) => OpenFile();
-
-            ToolStripButton saveButton = new ToolStripButton();
-            saveButton.Image = saveIcon;
-            saveButton.ToolTipText = "Save File";
-            saveButton.Click += (s, e) => SaveFile();
-
-            ToolStripButton saveAsButton = new ToolStripButton();
-            saveAsButton.Image = saveAsIcon;
-            saveAsButton.ToolTipText = "Save As";
-            saveAsButton.Click += (s, e) => SaveFileAs();
-
-            // Agregar botones al ToolStrip
-            toolStrip.Items.Add(openButton);
-            toolStrip.Items.Add(saveButton);
-            toolStrip.Items.Add(saveAsButton);
-
-            // Agregar la barra de herramientas al formulario
-            this.Controls.Add(toolStrip);
         }
 
+        #endregion
+
+        #region ToolStrip con botones con íconos y ToolTip
+
+        private void InicializarToolStrip()
+        {
+            // Limpiamos el toolStrip existente
+            toolStrip1.Items.Clear();
+
+            // --- Botón "New Project" para limpiar/abrir otro proyecto ---
+            ToolStripButton newProjectButton = new ToolStripButton();
+            newProjectButton.Image = SystemIcons.Application.ToBitmap(); // Puedes reemplazarlo por otro ícono personalizado
+            newProjectButton.ToolTipText = "New Project";
+            newProjectButton.Click += (s, e) =>
+            {
+                // Abre una nueva instancia de MainForm (nuevo proyecto)
+                MainForm newForm = new MainForm();
+                newForm.Show();
+            };
+            // Insertamos el botón al inicio del ToolStrip
+            toolStrip1.Items.Insert(0, newProjectButton);
+
+            // Botón "Edit"
+            ToolStripButton editButton = new ToolStripButton();
+            editButton.Image = SystemIcons.Information.ToBitmap();
+            editButton.ToolTipText = "Edit";
+            editButton.Click += (s, e) => { /* Aquí podrías implementar lógica de edición (Deshacer, Rehacer, etc.) */ };
+            toolStrip1.Items.Add(editButton);
+
+            // Botón "Build and Debug"
+            ToolStripButton buildDebugButton = new ToolStripButton();
+            buildDebugButton.Image = SystemIcons.Shield.ToBitmap();
+            buildDebugButton.ToolTipText = "Build and Debug";
+            buildDebugButton.Click += (s, e) => { /* Lógica de compilación y depuración */ };
+            toolStrip1.Items.Add(buildDebugButton);
+
+            // Botón "Open File"
+            ToolStripButton openFileButton = new ToolStripButton();
+            openFileButton.Image = SystemIcons.WinLogo.ToBitmap();
+            openFileButton.ToolTipText = "Open File";
+            openFileButton.Click += (s, e) => OpenFile();
+            toolStrip1.Items.Add(openFileButton);
+
+            // Botón "Close" (Cerrar ventana)
+            ToolStripButton closeButton = new ToolStripButton();
+            closeButton.Image = SystemIcons.Error.ToBitmap();
+            closeButton.ToolTipText = "Close Window";
+            closeButton.Click += (s, e) => this.Close();
+            toolStrip1.Items.Add(closeButton);
+
+            // Botón "Léxico" (Lexical Analysis)
+            ToolStripButton lexicoButton = new ToolStripButton();
+            lexicoButton.Image = SystemIcons.Information.ToBitmap();
+            lexicoButton.ToolTipText = "Lexical Analysis";
+            lexicoButton.Click += (s, e) => EjecutarFase("Lexical Analysis");
+            toolStrip1.Items.Add(lexicoButton);
+
+            // Botón "Sintáctico" (Syntax Analysis)
+            ToolStripButton sintacticoButton = new ToolStripButton();
+            sintacticoButton.Image = SystemIcons.Question.ToBitmap();
+            sintacticoButton.ToolTipText = "Syntax Analysis";
+            sintacticoButton.Click += (s, e) => EjecutarFase("Syntax Analysis");
+            toolStrip1.Items.Add(sintacticoButton);
+
+            // Botón "Semántico" (Semantic Analysis)
+            ToolStripButton semanticoButton = new ToolStripButton();
+            semanticoButton.Image = SystemIcons.Shield.ToBitmap();
+            semanticoButton.ToolTipText = "Semantic Analysis";
+            semanticoButton.Click += (s, e) => EjecutarFase("Semantic Analysis");
+            toolStrip1.Items.Add(semanticoButton);
+
+            // Botón "Compilar" (Compile)
+            ToolStripButton compilarButton = new ToolStripButton();
+            compilarButton.Image = SystemIcons.Exclamation.ToBitmap();
+            compilarButton.ToolTipText = "Compile";
+            compilarButton.Click += (s, e) => EjecutarFase("Intermediate Code");
+            toolStrip1.Items.Add(compilarButton);
+        }
+
+        #endregion
+
+        #region Botones del Explorador de Archivos
+
+        private void ModernizarBotonesFileExplorer()
+        {
+            // Ajustes para "Agregar Archivo"
+            btnAgregarArchivo.FlatStyle = FlatStyle.Flat;
+            btnAgregarArchivo.FlatAppearance.BorderSize = 0;
+            btnAgregarArchivo.BackColor = Color.FromArgb(45, 45, 48);
+            btnAgregarArchivo.FlatAppearance.MouseOverBackColor = Color.FromArgb(63, 63, 70);
+            btnAgregarArchivo.Size = new Size(32, 32);
+            btnAgregarArchivo.Image = CrearIconoConPlus();
+
+            // Ajustes para "Eliminar Archivo"
+            btnEliminarArchivo.FlatStyle = FlatStyle.Flat;
+            btnEliminarArchivo.FlatAppearance.BorderSize = 0;
+            btnEliminarArchivo.BackColor = Color.FromArgb(45, 45, 48);
+            btnEliminarArchivo.FlatAppearance.MouseOverBackColor = Color.FromArgb(63, 63, 70);
+            btnEliminarArchivo.Size = new Size(32, 32);
+            btnEliminarArchivo.Image = new Bitmap(SystemIcons.Error.ToBitmap(), new Size(24, 24));
+        }
+
+        // Crea un ícono base con un "plus" verde en la esquina
+        private Bitmap CrearIconoConPlus()
+        {
+            int baseW = 24, baseH = 24;
+            Bitmap baseIcon = new Bitmap(SystemIcons.WinLogo.ToBitmap(), new Size(baseW, baseH));
+            Bitmap plusIcon = new Bitmap(12, 12);
+            using (Graphics g = Graphics.FromImage(plusIcon))
+            {
+                g.Clear(Color.Transparent);
+                using (Pen pen = new Pen(Color.LimeGreen, 2))
+                {
+                    int c = plusIcon.Width / 2;
+                    g.DrawLine(pen, c, 2, c, plusIcon.Height - 2);
+                    g.DrawLine(pen, 2, c, plusIcon.Width - 2, c);
+                }
+            }
+            Bitmap composite = new Bitmap(baseIcon.Width, baseIcon.Height);
+            using (Graphics g = Graphics.FromImage(composite))
+            {
+                g.DrawImage(baseIcon, 0, 0);
+                int x = baseIcon.Width - plusIcon.Width;
+                int y = baseIcon.Height - plusIcon.Height;
+                g.DrawImage(plusIcon, x, y);
+            }
+            return composite;
+        }
+
+        #endregion
+
+        #region TabControl inferior para errores/resultados
+
+        private void InicializarTabOutput()
+        {
+            tabOutput.TabPages.Clear();
+            string[] nombresPestañas = { "Errores Lexicos", "Errores Sintacticos", "Errores Semanticos", "Resultados" };
+
+            foreach (string nombre in nombresPestañas)
+            {
+                TabPage pagina = new TabPage(nombre);
+                RichTextBox rtb = new RichTextBox
+                {
+                    Dock = DockStyle.Fill,
+                    Font = new Font("Consolas", 10),
+                    BackColor = Color.Black,
+                    ForeColor = Color.White,
+                    ReadOnly = true,
+                    Text = $"Contenido para {nombre}..."
+                };
+                pagina.Controls.Add(rtb);
+                tabOutput.TabPages.Add(pagina);
+            }
+        }
+
+        #endregion
+
+        #region Eventos del Editor y Números de Línea
 
         private void TxtEditor_SelectionChanged(object sender, EventArgs e)
         {
             UpdateLineColumn();
         }
 
-        private void MainForm_Resize(object sender, EventArgs e)
+        private void TxtEditor_TextChanged(object sender, EventArgs e)
         {
-            // Evita que el código se ejecute en el diseñador
-            if (DesignMode) return;
+            UpdateLineColumn();
+            lineNumberPanel.Invalidate();
+        }
 
-            int outputHeight = 100;
+        private void TxtEditor_VScroll(object sender, EventArgs e)
+        {
+            lineNumberPanel.Invalidate();
+        }
 
-            if (panelFileExplorer != null)
+        private void LineNumberPanel_Paint(object sender, PaintEventArgs e)
+        {
+            if (txtEditor == null) return;
+
+            int firstIndex = txtEditor.GetCharIndexFromPosition(new Point(0, 0));
+            int firstLine = txtEditor.GetLineFromCharIndex(firstIndex);
+            int lastIndex = txtEditor.GetCharIndexFromPosition(new Point(0, txtEditor.Height));
+            int lastLine = txtEditor.GetLineFromCharIndex(lastIndex);
+
+            using (SolidBrush brush = new SolidBrush(Color.Black))
+            using (Font font = new Font("Consolas", 10))
             {
-                panelFileExplorer.Size = new Size(200, this.ClientSize.Height - menuStrip.Height - lblStatus.Height - outputHeight);
-                panelFileExplorer.Location = new Point(this.ClientSize.Width - panelFileExplorer.Width, menuStrip.Height);
-            }
-
-            int editorWidth = this.ClientSize.Width - lineNumberPanel.Width - (panelFileExplorer != null ? panelFileExplorer.Width : 0);
-            int editorHeight = this.ClientSize.Height - menuStrip.Height - lblStatus.Height - outputHeight;
-            txtEditor.Size = new Size(editorWidth, editorHeight);
-            lineNumberPanel.Height = editorHeight;
-
-            txtOutput.Size = new Size(this.ClientSize.Width, outputHeight);
-            txtOutput.Location = new Point(0, this.ClientSize.Height - outputHeight);
-        }
-
-
-        /*private void InitializeMenu()
-        {
-            menuStrip = new MenuStrip();
-            this.MainMenuStrip = menuStrip;
-            this.Controls.Add(menuStrip);
-
-            ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
-            fileMenu.DropDownItems.Add("Open", null, (s, e) => OpenFile());
-            fileMenu.DropDownItems.Add("Save", null, (s, e) => SaveFile());
-            fileMenu.DropDownItems.Add("Save As", null, (s, e) => SaveFileAs());
-            menuStrip.Items.Add(fileMenu);
-
-            ToolStripMenuItem compileMenu = new ToolStripMenuItem("Compile");
-            compileMenu.DropDownItems.Add("Lexical Analysis", null, (s, e) => CompilePhase("Lexical"));
-            compileMenu.DropDownItems.Add("Syntax Analysis", null, (s, e) => CompilePhase("Syntax"));
-            compileMenu.DropDownItems.Add("Semantic Analysis", null, (s, e) => CompilePhase("Semantic"));
-            compileMenu.DropDownItems.Add("Intermediate Code", null, (s, e) => CompilePhase("Intermediate"));
-            compileMenu.DropDownItems.Add("Execution", null, (s, e) => CompilePhase("Execution"));
-            menuStrip.Items.Add(compileMenu);
-        }
-
-        private void InitializeEditor()
-        {
-            // Panel para números de línea
-            lineNumberPanel = new Panel();
-            lineNumberPanel.Width = 50;
-            lineNumberPanel.Dock = DockStyle.None;
-            lineNumberPanel.Location = new Point(0, menuStrip.Height);
-            lineNumberPanel.Height = this.ClientSize.Height - menuStrip.Height - (lblStatus?.Height ?? 20);
-            lineNumberPanel.BackColor = Color.LightGray;
-            lineNumberPanel.Paint += LineNumberPanel_Paint;
-            this.Controls.Add(lineNumberPanel);
-
-            // Editor de texto
-            txtEditor = new RichTextBox();
-            txtEditor.Multiline = true;
-            txtEditor.ScrollBars = RichTextBoxScrollBars.Both;
-            txtEditor.WordWrap = false;
-            txtEditor.AcceptsTab = true;
-            txtEditor.Dock = DockStyle.None;
-            // Se descuenta el ancho del panel lateral (200) para que no se solapen
-            int editorWidth = this.ClientSize.Width - lineNumberPanel.Width - 200;
-            int editorHeight = this.ClientSize.Height - menuStrip.Height - (lblStatus?.Height ?? 20) - 100; // 100 es la altura del panel de salida
-            txtEditor.Location = new Point(lineNumberPanel.Width, menuStrip.Height);
-            txtEditor.Size = new Size(editorWidth, editorHeight);
-            txtEditor.Font = new Font("Consolas", 10);
-            txtEditor.TextChanged += TxtEditor_TextChanged;
-            txtEditor.VScroll += TxtEditor_VScroll;
-            this.Controls.Add(txtEditor);
-
-            // Label de estado
-            lblStatus = new Label();
-            lblStatus.Height = 20;
-            lblStatus.Dock = DockStyle.Bottom;
-            this.Controls.Add(lblStatus);
-
-            // RichTextBox para la salida
-            txtOutput = new RichTextBox();
-            txtOutput.Multiline = true;
-            txtOutput.ScrollBars = RichTextBoxScrollBars.Vertical;
-            txtOutput.WordWrap = false;
-            txtOutput.ReadOnly = true;
-            txtOutput.Dock = DockStyle.None;
-            txtOutput.Location = new Point(0, this.ClientSize.Height - 100);
-            txtOutput.Size = new Size(this.ClientSize.Width, 100);
-            txtOutput.Font = new Font("Consolas", 10);
-            txtOutput.BackColor = Color.Black;
-            txtOutput.ForeColor = Color.White;
-            this.Controls.Add(txtOutput);
-        }
-
-        private void InitializeFileExplorer()
-        {
-            // Panel lateral derecho para el explorador de archivos
-            panelFileExplorer = new Panel();
-            panelFileExplorer.Width = 200;
-            panelFileExplorer.Height = this.ClientSize.Height - menuStrip.Height - lblStatus.Height - 100;
-            panelFileExplorer.Location = new Point(this.ClientSize.Width - panelFileExplorer.Width, menuStrip.Height);
-            panelFileExplorer.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
-            panelFileExplorer.BackColor = Color.LightSteelBlue;
-            this.Controls.Add(panelFileExplorer);
-
-            // Panel para los botones del explorador
-            Panel panelButtons = new Panel();
-            panelButtons.Height = 30;
-            panelButtons.Dock = DockStyle.Top;
-            panelFileExplorer.Controls.Add(panelButtons);
-
-            // Botón para agregar archivos
-            btnAgregarArchivo = new Button();
-            btnAgregarArchivo.Text = "Agregar Archivo";
-            btnAgregarArchivo.AutoSize = true;
-            btnAgregarArchivo.Click += BtnAgregarArchivo_Click;
-            panelButtons.Controls.Add(btnAgregarArchivo);
-
-            // Botón para eliminar archivos
-            Button btnEliminarArchivo = new Button();
-            btnEliminarArchivo.Text = "Eliminar Archivo";
-            btnEliminarArchivo.AutoSize = true;
-            btnEliminarArchivo.Click += BtnEliminarArchivo_Click;
-            // Ubicar el botón junto al de "Agregar Archivo"
-            btnEliminarArchivo.Location = new Point(btnAgregarArchivo.Width + 5, 0);
-            panelButtons.Controls.Add(btnEliminarArchivo);
-
-            // TreeView para mostrar los archivos agregados
-            fileExplorer = new TreeView();
-            fileExplorer.Dock = DockStyle.Fill;
-            fileExplorer.NodeMouseDoubleClick += FileExplorer_NodeMouseDoubleClick;
-            panelFileExplorer.Controls.Add(fileExplorer);
-        }*/
-        private void BtnEliminarArchivo_Click(object sender, EventArgs e)
-        {
-            // Obtener el nodo seleccionado del TreeView
-            TreeNode selectedNode = fileExplorer.SelectedNode;
-            if (selectedNode != null)
-            {
-                // Preguntar al usuario si está seguro de eliminar el archivo del explorador
-                DialogResult result = MessageBox.Show("¿Estás seguro de que deseas eliminar este archivo del explorador?",
-                                                          "Confirmar eliminación", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result == DialogResult.Yes)
+                int yOffset = 0;
+                for (int i = firstLine; i <= lastLine; i++)
                 {
-                    // Guardar la ruta del archivo antes de eliminar el nodo
-                    string filePathToDelete = selectedNode.Tag as string;
-                    // Si el archivo eliminado es el que está cargado en el editor, lo limpiamos
-                    if (!string.IsNullOrEmpty(filePathToDelete) && filePathToDelete == currentFilePath)
-                    {
-                        txtEditor.Clear();
-                        currentFilePath = string.Empty;
-                    }
-                    fileExplorer.Nodes.Remove(selectedNode);
+                    e.Graphics.DrawString((i + 1).ToString(), font, brush, new PointF(5, yOffset));
+                    yOffset += 20;
                 }
             }
-            else
+        }
+
+        private void UpdateLineColumn()
+        {
+            if (txtEditor == null || lblStatus == null) return;
+
+            int line = txtEditor.GetLineFromCharIndex(txtEditor.SelectionStart) + 1;
+            int column = txtEditor.SelectionStart - txtEditor.GetFirstCharIndexOfCurrentLine() + 1;
+            lblStatus.Text = $"Línea: {line}, Columna: {column}";
+        }
+
+        #endregion
+
+        #region Lógica de Menú/Compilación
+
+        private void EjecutarFase(string fase)
+        {
+            string tabName;
+            string message = $"Ejecutando {fase}...\n\n[Resultados se mostrarán aquí]";
+
+            switch (fase)
             {
-                MessageBox.Show("Por favor, selecciona un archivo para eliminar.", "Eliminar Archivo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                case "Lexical Analysis":
+                    tabName = "Errores Lexicos";
+                    break;
+                case "Syntax Analysis":
+                    tabName = "Errores Sintacticos";
+                    break;
+                case "Semantic Analysis":
+                    tabName = "Errores Semanticos";
+                    break;
+                case "Intermediate Code":
+                case "Execution":
+                    tabName = "Resultados";
+                    break;
+                default:
+                    tabName = "Resultados";
+                    break;
+            }
+
+            foreach (TabPage pagina in tabOutput.TabPages)
+            {
+                if (pagina.Text.Equals(tabName, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (pagina.Controls.Count > 0 && pagina.Controls[0] is RichTextBox rtb)
+                    {
+                        rtb.Text = message;
+                    }
+                    tabOutput.SelectedTab = pagina;
+                    break;
+                }
             }
         }
+
+        #endregion
+
+        #region Abrir/Guardar Archivos
+
+        private void OpenFile()
+        {
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    currentFilePath = openFileDialog.FileName;
+                    txtEditor.Text = File.ReadAllText(currentFilePath);
+                }
+            }
+        }
+
+        private void SaveFile()
+        {
+            if (string.IsNullOrEmpty(currentFilePath))
+                SaveFileAs();
+            else
+                File.WriteAllText(currentFilePath, txtEditor.Text);
+        }
+
+        private void SaveFileAs()
+        {
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    currentFilePath = saveFileDialog.FileName;
+                    File.WriteAllText(currentFilePath, txtEditor.Text);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Explorador de Archivos
 
         private void BtnAgregarArchivo_Click(object sender, EventArgs e)
         {
@@ -255,7 +379,6 @@ namespace IDE_COMPILADOR
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     string filePath = openFileDialog.FileName;
-                    // Agregar el archivo al TreeView si no existe ya
                     if (!FileNodeExists(filePath))
                     {
                         TreeNode node = new TreeNode(Path.GetFileName(filePath));
@@ -276,6 +399,31 @@ namespace IDE_COMPILADOR
             return false;
         }
 
+        private void BtnEliminarArchivo_Click(object sender, EventArgs e)
+        {
+            TreeNode selectedNode = fileExplorer.SelectedNode;
+            if (selectedNode != null)
+            {
+                DialogResult result = MessageBox.Show("¿Estás seguro de que deseas eliminar este archivo del explorador?",
+                                                      "Confirmar eliminación", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (result == DialogResult.Yes)
+                {
+                    string filePathToDelete = selectedNode.Tag as string;
+                    if (!string.IsNullOrEmpty(filePathToDelete) && filePathToDelete == currentFilePath)
+                    {
+                        txtEditor.Clear();
+                        currentFilePath = string.Empty;
+                    }
+                    fileExplorer.Nodes.Remove(selectedNode);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Por favor, selecciona un archivo para eliminar.", "Eliminar Archivo",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
         private void FileExplorer_NodeMouseDoubleClick(object sender, TreeNodeMouseClickEventArgs e)
         {
             if (e.Node.Tag != null)
@@ -293,86 +441,6 @@ namespace IDE_COMPILADOR
             }
         }
 
-        private void TxtEditor_TextChanged(object sender, EventArgs e)
-        {
-            UpdateLineColumn();
-            lineNumberPanel.Invalidate();
-        }
-
-        private void TxtEditor_VScroll(object sender, EventArgs e)
-        {
-            lineNumberPanel.Invalidate();
-        }
-
-        private void LineNumberPanel_Paint(object sender, PaintEventArgs e)
-        {
-            int firstIndex = txtEditor.GetCharIndexFromPosition(new Point(0, 0));
-            int firstLine = txtEditor.GetLineFromCharIndex(firstIndex);
-            int lastIndex = txtEditor.GetCharIndexFromPosition(new Point(0, txtEditor.Height));
-            int lastLine = txtEditor.GetLineFromCharIndex(lastIndex);
-
-            using (SolidBrush brush = new SolidBrush(Color.Black))
-            using (Font font = new Font("Consolas", 10))
-            {
-                for (int i = firstLine, y = 0; i <= lastLine; i++, y += 20)
-                {
-                    e.Graphics.DrawString((i + 1).ToString(), font, brush, new PointF(5, y));
-                }
-            }
-        }
-
-        private void UpdateLineColumn()
-        {
-            if (txtEditor == null || lblStatus == null)
-                return;
-
-            int line = txtEditor.GetLineFromCharIndex(txtEditor.SelectionStart) + 1;
-            int column = txtEditor.SelectionStart - txtEditor.GetFirstCharIndexOfCurrentLine() + 1;
-            lblStatus.Text = $"Línea: {line}, Columna: {column}";
-        }
-
-
-        private void CompilePhase(string phase)
-        {
-            MessageBox.Show($"Ejecutando {phase} analysis...");
-        }
-
-        private void OpenFile()
-        {
-            using (OpenFileDialog openFileDialog = new OpenFileDialog())
-            {
-                openFileDialog.Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
-                if (openFileDialog.ShowDialog() == DialogResult.OK)
-                {
-                    currentFilePath = openFileDialog.FileName;
-                    txtEditor.Text = File.ReadAllText(currentFilePath);
-                }
-            }
-        }
-
-        private void SaveFile()
-        {
-            if (string.IsNullOrEmpty(currentFilePath))
-            {
-                SaveFileAs();
-            }
-            else
-            {
-                File.WriteAllText(currentFilePath, txtEditor.Text);
-            }
-        }
-
-        private void SaveFileAs()
-        {
-            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
-            {
-                saveFileDialog.Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
-                if (saveFileDialog.ShowDialog() == DialogResult.OK)
-                {
-                    currentFilePath = saveFileDialog.FileName;
-                    File.WriteAllText(currentFilePath, txtEditor.Text);
-                }
-            }
-        }
+        #endregion
     }
 }
