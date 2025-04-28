@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
+using IDE_COMPILADOR.AnalizadorLexico; 
+
 
 namespace IDE_COMPILADOR
 {
@@ -290,50 +292,87 @@ namespace IDE_COMPILADOR
 
         #region Lógica de Menú/Compilación
 
-        private void EjecutarFase(string fase)
+
+private void EjecutarFase(string fase)
+    {
+        string tabName;
+
+        switch (fase)
         {
-            string tabName;
-            string message = $"Ejecutando {fase}...\n\n[Resultados se mostrarán aquí]";
-
-            switch (fase)
-            {
-                case "Lexical Analysis":
-                    tabName = "Errores Lexicos";
-                    break;
-                case "Syntax Analysis":
-                    tabName = "Errores Sintacticos";
-                    break;
-                case "Semantic Analysis":
-                    tabName = "Errores Semanticos";
-                    break;
-                case "Intermediate Code":
-                case "Execution":
-                    tabName = "Resultados";
-                    break;
-                default:
-                    tabName = "Resultados";
-                    break;
-            }
-
-            foreach (TabPage pagina in tabOutput.TabPages)
-            {
-                if (pagina.Text.Equals(tabName, StringComparison.OrdinalIgnoreCase))
+            case "Lexical Analysis":
                 {
-                    if (pagina.Controls.Count > 0 && pagina.Controls[0] is RichTextBox rtb)
+                    tabName = "Errores Lexicos";
+
+                    LexicalAnalyzer analizador = new LexicalAnalyzer();
+                    var (tokens, errores) = analizador.Analizar(txtEditor.Text);
+
+                    foreach (TabPage pagina in tabOutput.TabPages)
                     {
-                        rtb.Text = message;
+                        if (pagina.Text.Equals(tabName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (pagina.Controls.Count > 0 && pagina.Controls[0] is RichTextBox rtb)
+                            {
+                                if (errores.Count > 0)
+                                {
+                                    rtb.Text = "Errores Léxicos Encontrados:\n\n" + string.Join(Environment.NewLine, errores);
+                                }
+                                else
+                                {
+                                    rtb.Text = "Análisis Léxico Correcto:\n\n" +
+                                               string.Join(Environment.NewLine, tokens.Select(t => t.ToString()));
+                                }
+                            }
+                            tabOutput.SelectedTab = pagina;
+                            break;
+                        }
                     }
-                    tabOutput.SelectedTab = pagina;
                     break;
                 }
+            case "Syntax Analysis":
+                tabName = "Errores Sintacticos";
+                MostrarMensajeTemporal(tabName, "Ejecutando análisis sintáctico...");
+                break;
+            case "Semantic Analysis":
+                tabName = "Errores Semanticos";
+                MostrarMensajeTemporal(tabName, "Ejecutando análisis semántico...");
+                break;
+            case "Intermediate Code":
+                tabName = "Resultados";
+                MostrarMensajeTemporal(tabName, "Generando código intermedio...");
+                break;
+            case "Execution":
+                tabName = "Resultados";
+                MostrarMensajeTemporal(tabName, "Ejecutando programa...");
+                break;
+            default:
+                tabName = "Resultados";
+                MostrarMensajeTemporal(tabName, $"Fase '{fase}' en ejecución...");
+                break;
+        }
+    }
+
+    private void MostrarMensajeTemporal(string tabName, string mensaje)
+    {
+        foreach (TabPage pagina in tabOutput.TabPages)
+        {
+            if (pagina.Text.Equals(tabName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (pagina.Controls.Count > 0 && pagina.Controls[0] is RichTextBox rtb)
+                {
+                    rtb.Text = mensaje;
+                }
+                tabOutput.SelectedTab = pagina;
+                break;
             }
         }
+    }
 
-        #endregion
 
-        #region Abrir/Guardar Archivos
+    #endregion
 
-        private void OpenFile()
+    #region Abrir/Guardar Archivos
+
+    private void OpenFile()
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {

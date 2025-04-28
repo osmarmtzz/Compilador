@@ -1,49 +1,37 @@
-﻿namespace IDE_COMPILADOR
+﻿using System;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Windows.Forms;
+using System.Reflection;
+
+namespace IDE_COMPILADOR
 {
-    partial class MainForm
+    partial class MainForm : Form
     {
-        /// <summary>
-        /// Variable del diseñador necesaria.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        // Controles del formulario
-        private System.Windows.Forms.MenuStrip menuStrip;
-        private System.Windows.Forms.ToolStrip toolStrip1;
-        private System.Windows.Forms.Panel panelMain;
+        private MenuStrip menuStrip;
+        private ToolStrip toolStrip1;
+        private SplitContainer splitContainer;
+        private Panel panelEditor;
+        private Panel lineNumberPanel;
+        private RichTextBox txtEditor;
+        private Panel panelAnalysis;
+        private TabControl tabAnalysis;
+        private TabPage tabLexico;
+        private TabPage tabSintactico;
+        private TabPage tabSemantico;
+        private TabPage tabHashTable;
+        private TabPage tabCodigoIntermedio;
+        private Panel panelFileExplorer;
+        private FlowLayoutPanel panelFileExplorerButtons;
+        private Button btnAgregarArchivo;
+        private Button btnEliminarArchivo;
+        private TreeView fileExplorer;
+        private TabControl tabOutput;
+        private Label lblStatus;
+        private ToolTip toolTip1;
 
-        // Editor de texto
-        private System.Windows.Forms.Panel panelEditor;
-        private System.Windows.Forms.Panel lineNumberPanel;
-        private System.Windows.Forms.RichTextBox txtEditor;
-
-        // Panel central de análisis
-        private System.Windows.Forms.Panel panelAnalysis;
-        private System.Windows.Forms.TabControl tabAnalysis;
-        private System.Windows.Forms.TabPage tabLexico;
-        private System.Windows.Forms.TabPage tabSintactico;
-        private System.Windows.Forms.TabPage tabSemantico;
-        private System.Windows.Forms.TabPage tabHashTable;
-        private System.Windows.Forms.TabPage tabCodigoIntermedio;
-
-        // Explorador de archivos
-        private System.Windows.Forms.Panel panelFileExplorer;
-        private System.Windows.Forms.FlowLayoutPanel panelFileExplorerButtons;
-        private System.Windows.Forms.Button btnAgregarArchivo;
-        private System.Windows.Forms.Button btnEliminarArchivo;
-        private System.Windows.Forms.TreeView fileExplorer;
-
-        // Área inferior (TabControl) para resultados
-        private System.Windows.Forms.TabControl tabOutput;
-        private System.Windows.Forms.Label lblStatus;
-
-        // ToolTip para mostrar textos al pasar el cursor
-        private System.Windows.Forms.ToolTip toolTip1;
-
-        /// <summary>
-        /// Limpiar los recursos que se estén usando.
-        /// </summary>
-        /// <param name="disposing">true si se deben desechar los recursos administrados; false en caso contrario.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -53,221 +41,196 @@
             base.Dispose(disposing);
         }
 
-        #region Código generado por el Diseñador de Windows Forms
-
-        /// <summary>
-        /// Método necesario para admitir el Diseñador.
-        /// No modificar el contenido de este método con el editor de código.
-        /// </summary>
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.menuStrip = new System.Windows.Forms.MenuStrip();
-            this.toolStrip1 = new System.Windows.Forms.ToolStrip();
-            this.panelMain = new System.Windows.Forms.Panel();
+            this.menuStrip = new MenuStrip();
+            this.toolStrip1 = new ToolStrip();
+            this.splitContainer = new SplitContainer();
+            this.panelEditor = new Panel();
+            this.lineNumberPanel = new Panel();
+            this.txtEditor = new RichTextBox();
+            this.panelAnalysis = new Panel();
+            this.tabAnalysis = new TabControl();
+            this.tabLexico = new TabPage();
+            this.tabSintactico = new TabPage();
+            this.tabSemantico = new TabPage();
+            this.tabHashTable = new TabPage();
+            this.tabCodigoIntermedio = new TabPage();
+            this.panelFileExplorer = new Panel();
+            this.panelFileExplorerButtons = new FlowLayoutPanel();
+            this.btnAgregarArchivo = new Button();
+            this.btnEliminarArchivo = new Button();
+            this.fileExplorer = new TreeView();
+            this.tabOutput = new TabControl();
+            this.lblStatus = new Label();
+            this.toolTip1 = new ToolTip(this.components);
 
-            this.panelEditor = new System.Windows.Forms.Panel();
-            this.lineNumberPanel = new System.Windows.Forms.Panel();
-            this.txtEditor = new System.Windows.Forms.RichTextBox();
-
-            this.panelAnalysis = new System.Windows.Forms.Panel();
-            this.tabAnalysis = new System.Windows.Forms.TabControl();
-            this.tabLexico = new System.Windows.Forms.TabPage();
-            this.tabSintactico = new System.Windows.Forms.TabPage();
-            this.tabSemantico = new System.Windows.Forms.TabPage();
-            this.tabHashTable = new System.Windows.Forms.TabPage();
-            this.tabCodigoIntermedio = new System.Windows.Forms.TabPage();
-
-            this.panelFileExplorer = new System.Windows.Forms.Panel();
-            this.panelFileExplorerButtons = new System.Windows.Forms.FlowLayoutPanel();
-            this.btnAgregarArchivo = new System.Windows.Forms.Button();
-            this.btnEliminarArchivo = new System.Windows.Forms.Button();
-            this.fileExplorer = new System.Windows.Forms.TreeView();
-
-            this.tabOutput = new System.Windows.Forms.TabControl();
-            this.lblStatus = new System.Windows.Forms.Label();
-
-            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-
-            // 
             // menuStrip
-            // 
-            this.menuStrip.Dock = System.Windows.Forms.DockStyle.Top;
-            this.menuStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
-            this.menuStrip.Location = new System.Drawing.Point(0, 0);
-            this.menuStrip.Name = "menuStrip";
-            this.menuStrip.Size = new System.Drawing.Size(1200, 24);
-            this.menuStrip.TabIndex = 0;
+            this.menuStrip.Dock = DockStyle.Top;
+            this.menuStrip.BackColor = Color.FromArgb(18, 18, 30);
+            this.menuStrip.ForeColor = Color.White;
+            this.menuStrip.Font = new Font("Segoe UI", 10F);
 
-            // 
             // toolStrip1
-            // 
-            this.toolStrip1.Dock = System.Windows.Forms.DockStyle.Top;
-            this.toolStrip1.ImageScalingSize = new System.Drawing.Size(24, 24);
-            this.toolStrip1.Location = new System.Drawing.Point(0, 24);
-            this.toolStrip1.Name = "toolStrip1";
-            this.toolStrip1.Size = new System.Drawing.Size(1200, 31);
-            this.toolStrip1.TabIndex = 1;
-            this.toolStrip1.Text = "toolStrip1";
+            this.toolStrip1.Dock = DockStyle.Top;
+            this.toolStrip1.BackColor = Color.FromArgb(28, 28, 48);
+            this.toolStrip1.ForeColor = Color.White;
+            this.toolStrip1.ImageScalingSize = new Size(24, 24);
+            this.toolStrip1.GripStyle = ToolStripGripStyle.Hidden;
+            this.toolStrip1.Items.Add(CreateToolStripButton("🚀", "Compilar"));
+            this.toolStrip1.Items.Add(CreateToolStripButton("📂", "Abrir"));
+            this.toolStrip1.Items.Add(CreateToolStripButton("💾", "Guardar"));
 
-            // 
-            // panelMain
-            // 
-            this.panelMain.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelMain.Location = new System.Drawing.Point(0, 55);
-            this.panelMain.Name = "panelMain";
-            this.panelMain.Size = new System.Drawing.Size(1200, 345);
-            this.panelMain.TabIndex = 2;
+            // splitContainer
+            this.splitContainer.Dock = DockStyle.Fill;
+            this.splitContainer.Orientation = Orientation.Vertical;
+            this.splitContainer.SplitterDistance = 600;
+            this.splitContainer.BackColor = Color.Transparent;
+            this.splitContainer.IsSplitterFixed = false;
+            this.splitContainer.BorderStyle = BorderStyle.FixedSingle;
+            this.splitContainer.SplitterWidth = 6;
+            this.splitContainer.Cursor = Cursors.VSplit;
 
-            // 
             // panelEditor
-            // 
-            this.panelEditor.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelEditor.Location = new System.Drawing.Point(0, 0);
-            this.panelEditor.Name = "panelEditor";
-            this.panelEditor.Size = new System.Drawing.Size(600, 345);
-            this.panelEditor.TabIndex = 0;
+            this.panelEditor.Dock = DockStyle.Fill;
+            this.panelEditor.BackColor = Color.Transparent;
+            this.panelEditor.Padding = new Padding(5);
+            this.panelEditor.Paint += PanelEditor_Paint;
 
-            // 
             // lineNumberPanel
-            // 
-            this.lineNumberPanel.Dock = System.Windows.Forms.DockStyle.Left;
+            this.lineNumberPanel.Dock = DockStyle.Left;
             this.lineNumberPanel.Width = 40;
-            this.lineNumberPanel.BackColor = System.Drawing.Color.LightGray;
+            this.lineNumberPanel.BackColor = Color.FromArgb(50, 50, 70);
 
-            // 
             // txtEditor
-            // 
-            this.txtEditor.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtEditor.Font = new System.Drawing.Font("Consolas", 10F);
+            this.txtEditor.Dock = DockStyle.Fill;
+            this.txtEditor.Font = new Font("JetBrains Mono", 10F);
             this.txtEditor.AcceptsTab = true;
             this.txtEditor.WordWrap = false;
-            this.txtEditor.Location = new System.Drawing.Point(40, 0);
-            this.txtEditor.Name = "txtEditor";
-            this.txtEditor.Size = new System.Drawing.Size(560, 345);
-            this.txtEditor.TabIndex = 0;
-            this.txtEditor.Text = "";
+            this.txtEditor.BackColor = Color.FromArgb(20, 20, 20);
+            this.txtEditor.ForeColor = Color.FromArgb(220, 220, 220);
+            this.txtEditor.BorderStyle = BorderStyle.None;
 
-            // Se añaden txtEditor y lineNumberPanel al panelEditor
             this.panelEditor.Controls.Add(this.txtEditor);
             this.panelEditor.Controls.Add(this.lineNumberPanel);
 
-            // 
             // panelAnalysis
-            // 
-            this.panelAnalysis.Dock = System.Windows.Forms.DockStyle.Right;
-            this.panelAnalysis.Width = 800;
-            this.panelAnalysis.Name = "panelAnalysis";
-            this.panelAnalysis.BackColor = System.Drawing.Color.DimGray;
+            this.panelAnalysis.Dock = DockStyle.Fill;
+            this.panelAnalysis.BackColor = Color.FromArgb(30, 30, 50);
 
-            // 
             // tabAnalysis
-            // 
-            this.tabAnalysis.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabAnalysis.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.tabAnalysis.Name = "tabAnalysis";
+            this.tabAnalysis.Dock = DockStyle.Fill;
+            this.tabAnalysis.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            this.tabAnalysis.Appearance = TabAppearance.FlatButtons;
+            this.tabAnalysis.ItemSize = new Size(120, 30);
+            this.tabAnalysis.SizeMode = TabSizeMode.Normal;
+            this.tabAnalysis.Multiline = true;
 
-            this.tabLexico.Text = "Léxico";
-            this.tabSintactico.Text = "Sintáctico";
-            this.tabSemantico.Text = "Semántico";
-            this.tabHashTable.Text = "Hash Table";
-            this.tabCodigoIntermedio.Text = "Código Intermedio";
+            this.tabLexico.Text = "🧩 Léxico";
+            this.tabSintactico.Text = "📐 Sintáctico";
+            this.tabSemantico.Text = "🧠 Semántico";
+            this.tabHashTable.Text = "🔑 Hash Table";
+            this.tabCodigoIntermedio.Text = "💻 Código Intermedio";
 
-            // Se agregan las pestañas al TabControl
-            this.tabAnalysis.TabPages.Add(this.tabLexico);
-            this.tabAnalysis.TabPages.Add(this.tabSintactico);
-            this.tabAnalysis.TabPages.Add(this.tabSemantico);
-            this.tabAnalysis.TabPages.Add(this.tabHashTable);
-            this.tabAnalysis.TabPages.Add(this.tabCodigoIntermedio);
+            this.tabAnalysis.TabPages.AddRange(new TabPage[] {
+                this.tabLexico, this.tabSintactico, this.tabSemantico, this.tabHashTable, this.tabCodigoIntermedio });
 
-            // Añadimos el TabControl al panelAnalysis
             this.panelAnalysis.Controls.Add(this.tabAnalysis);
 
-            // 
+            // splitContainer panels
+            this.splitContainer.Panel1.Controls.Add(this.panelEditor);
+            this.splitContainer.Panel2.Controls.Add(this.panelAnalysis);
+
             // panelFileExplorer
-            // 
-            this.panelFileExplorer.Dock = System.Windows.Forms.DockStyle.Right;
+            this.panelFileExplorer.Dock = DockStyle.Right;
             this.panelFileExplorer.Width = 200;
-            this.panelFileExplorer.BackColor = System.Drawing.Color.LightSteelBlue;
-            this.panelFileExplorer.Name = "panelFileExplorer";
+            this.panelFileExplorer.BackColor = Color.FromArgb(40, 40, 60);
 
-            // 
             // panelFileExplorerButtons
-            // 
-            this.panelFileExplorerButtons.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelFileExplorerButtons.Dock = DockStyle.Top;
             this.panelFileExplorerButtons.Height = 40;
-            this.panelFileExplorerButtons.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
-            this.panelFileExplorerButtons.Padding = new System.Windows.Forms.Padding(5);
+            this.panelFileExplorerButtons.FlowDirection = FlowDirection.LeftToRight;
+            this.panelFileExplorerButtons.Padding = new Padding(5);
 
-            // 
-            // btnAgregarArchivo
-            // 
-            this.btnAgregarArchivo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnAgregarArchivo.Text = "";
-            this.btnAgregarArchivo.AutoSize = true;
-            this.btnAgregarArchivo.Margin = new System.Windows.Forms.Padding(5);
-
-            // 
-            // btnEliminarArchivo
-            // 
-            this.btnEliminarArchivo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnEliminarArchivo.Text = "";
-            this.btnEliminarArchivo.AutoSize = true;
-            this.btnEliminarArchivo.Margin = new System.Windows.Forms.Padding(5);
-
-            // Se añaden los botones al panel
+            ConfigureModernButton(this.btnAgregarArchivo, "📄");
+            ConfigureModernButton(this.btnEliminarArchivo, "❌");
             this.panelFileExplorerButtons.Controls.Add(this.btnAgregarArchivo);
             this.panelFileExplorerButtons.Controls.Add(this.btnEliminarArchivo);
 
-            // 
             // fileExplorer
-            // 
-            this.fileExplorer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.fileExplorer.Dock = DockStyle.Fill;
+            this.fileExplorer.BackColor = Color.FromArgb(30, 30, 45);
+            this.fileExplorer.ForeColor = Color.White;
 
-            // Se añaden el TreeView y el panel de botones al panelFileExplorer
             this.panelFileExplorer.Controls.Add(this.fileExplorer);
             this.panelFileExplorer.Controls.Add(this.panelFileExplorerButtons);
 
-            // 
             // tabOutput
-            // 
-            this.tabOutput.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.tabOutput.Dock = DockStyle.Bottom;
             this.tabOutput.Height = 150;
-            this.tabOutput.BackColor = System.Drawing.Color.Black;
+            this.tabOutput.BackColor = Color.FromArgb(15, 15, 25);
+            this.tabOutput.ForeColor = Color.LightGreen;
 
-            // 
             // lblStatus
-            // 
-            this.lblStatus.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.lblStatus.Dock = DockStyle.Bottom;
             this.lblStatus.Height = 20;
+            this.lblStatus.ForeColor = Color.White;
+            this.lblStatus.BackColor = Color.FromArgb(25, 25, 35);
 
-            // 
-            // toolTip1
-            // 
-            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-
-            // 
-            // Orden de adición de paneles a panelMain
-            // 
-            this.panelMain.Controls.Add(this.panelEditor);
-            this.panelMain.Controls.Add(this.panelAnalysis);
-            this.panelMain.Controls.Add(this.panelFileExplorer);
-
-            // 
-            // Se agregan panelMain, tabOutput, lblStatus, toolStrip1 y menuStrip al formulario
-            // 
-            this.Controls.Add(this.panelMain);
+            this.Controls.Add(this.splitContainer);
+            this.Controls.Add(this.panelFileExplorer);
             this.Controls.Add(this.tabOutput);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.toolStrip1);
             this.Controls.Add(this.menuStrip);
 
-            this.ClientSize = new System.Drawing.Size(1200, 600);
+            this.ClientSize = new Size(1200, 600);
             this.Name = "MainForm";
-            this.Text = "Compilador";
-            this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
+            this.Text = "Compilador ";
+            this.WindowState = FormWindowState.Maximized;
         }
 
-        #endregion
+        private void ConfigureModernButton(Button button, string text)
+        {
+            button.Text = text;
+            button.FlatStyle = FlatStyle.Flat;
+            button.ForeColor = Color.White;
+            button.BackColor = Color.FromArgb(60, 60, 90);
+            button.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            button.AutoSize = true;
+            button.Margin = new Padding(5);
+            button.Cursor = Cursors.Hand;
+
+            button.MouseEnter += (s, e) => button.BackColor = Color.FromArgb(80, 80, 120);
+            button.MouseLeave += (s, e) => button.BackColor = Color.FromArgb(60, 60, 90);
+        }
+
+        private ToolStripButton CreateToolStripButton(string icon, string tooltip)
+        {
+            return new ToolStripButton
+            {
+                Text = icon,
+                ToolTipText = tooltip,
+                Font = new Font("Segoe UI", 14F),
+                ForeColor = Color.White,
+                DisplayStyle = ToolStripItemDisplayStyle.Text,
+                AutoSize = false,
+                Width = 40,
+                Height = 40
+            };
+        }
+
+        private void PanelEditor_Paint(object sender, PaintEventArgs e)
+        {
+            using (GraphicsPath path = new GraphicsPath())
+            {
+                path.AddRectangle(panelEditor.ClientRectangle);
+                using (Pen pen = new Pen(Color.FromArgb(100, 100, 150), 2))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            }
+        }
     }
 }
