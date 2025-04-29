@@ -12,7 +12,8 @@ namespace IDE_COMPILADOR
 
         private MenuStrip menuStrip;
         private ToolStrip toolStrip1;
-        private SplitContainer splitContainer;
+        private SplitContainer splitContainerMain; // NUEVO
+        private SplitContainer splitContainer;     // EXISTENTE (editor y análisis)
         private Panel panelEditor;
         private Panel lineNumberPanel;
         private RichTextBox txtEditor;
@@ -31,6 +32,7 @@ namespace IDE_COMPILADOR
         private TabControl tabOutput;
         private Label lblStatus;
         private ToolTip toolTip1;
+        private Button btnToggleExplorer; // NUEVO botón para mostrar/ocultar explorador
 
         protected override void Dispose(bool disposing)
         {
@@ -46,6 +48,7 @@ namespace IDE_COMPILADOR
             this.components = new System.ComponentModel.Container();
             this.menuStrip = new MenuStrip();
             this.toolStrip1 = new ToolStrip();
+            this.splitContainerMain = new SplitContainer(); // INICIALIZAR
             this.splitContainer = new SplitContainer();
             this.panelEditor = new Panel();
             this.lineNumberPanel = new Panel();
@@ -65,6 +68,7 @@ namespace IDE_COMPILADOR
             this.tabOutput = new TabControl();
             this.lblStatus = new Label();
             this.toolTip1 = new ToolTip(this.components);
+            this.btnToggleExplorer = new Button(); // INICIALIZAR BOTÓN
 
             // menuStrip
             this.menuStrip.Dock = DockStyle.Top;
@@ -76,13 +80,23 @@ namespace IDE_COMPILADOR
             this.toolStrip1.Dock = DockStyle.Top;
             this.toolStrip1.BackColor = Color.FromArgb(28, 28, 48);
             this.toolStrip1.ForeColor = Color.White;
-            this.toolStrip1.ImageScalingSize = new Size(24, 24);
+            this.toolStrip1.ImageScalingSize = new Size(32, 32); // o 32x32 si prefieres un tamaño intermedio
             this.toolStrip1.GripStyle = ToolStripGripStyle.Hidden;
-            this.toolStrip1.Items.Add(CreateToolStripButton("🚀", "Compilar"));
-            this.toolStrip1.Items.Add(CreateToolStripButton("📂", "Abrir"));
-            this.toolStrip1.Items.Add(CreateToolStripButton("💾", "Guardar"));
+            this.toolStrip1.Padding = new Padding(5, 5, 5, 5);
+            this.toolStrip1.AutoSize = false;
+            this.toolStrip1.Height = 50; // Asegura que todos los íconos encajen bien
 
-            // splitContainer
+
+
+            // splitContainerMain (NUEVO - PARA EDITOR Y TABOUTPUT)
+            this.splitContainerMain.Dock = DockStyle.Fill;
+            this.splitContainerMain.Orientation = Orientation.Horizontal;
+            this.splitContainerMain.SplitterDistance = 400;
+            this.splitContainerMain.SplitterWidth = 6;
+            this.splitContainerMain.IsSplitterFixed = false;
+            this.splitContainerMain.BorderStyle = BorderStyle.FixedSingle;
+
+            // splitContainer (editor y análisis)
             this.splitContainer.Dock = DockStyle.Fill;
             this.splitContainer.Orientation = Orientation.Vertical;
             this.splitContainer.SplitterDistance = 600;
@@ -153,8 +167,6 @@ namespace IDE_COMPILADOR
             this.panelFileExplorerButtons.FlowDirection = FlowDirection.LeftToRight;
             this.panelFileExplorerButtons.Padding = new Padding(5);
 
-            ConfigureModernButton(this.btnAgregarArchivo, "📄");
-            ConfigureModernButton(this.btnEliminarArchivo, "❌");
             this.panelFileExplorerButtons.Controls.Add(this.btnAgregarArchivo);
             this.panelFileExplorerButtons.Controls.Add(this.btnEliminarArchivo);
 
@@ -167,8 +179,7 @@ namespace IDE_COMPILADOR
             this.panelFileExplorer.Controls.Add(this.panelFileExplorerButtons);
 
             // tabOutput
-            this.tabOutput.Dock = DockStyle.Bottom;
-            this.tabOutput.Height = 150;
+            this.tabOutput.Dock = DockStyle.Fill;
             this.tabOutput.BackColor = Color.FromArgb(15, 15, 25);
             this.tabOutput.ForeColor = Color.LightGreen;
 
@@ -178,17 +189,36 @@ namespace IDE_COMPILADOR
             this.lblStatus.ForeColor = Color.White;
             this.lblStatus.BackColor = Color.FromArgb(25, 25, 35);
 
-            this.Controls.Add(this.splitContainer);
+            // btnToggleExplorer (mostrar/ocultar explorador)
+            this.btnToggleExplorer.Dock = DockStyle.Right;
+            this.btnToggleExplorer.Width = 25;
+            this.btnToggleExplorer.Text = "⇆";
+            this.btnToggleExplorer.FlatStyle = FlatStyle.Flat;
+            this.btnToggleExplorer.ForeColor = Color.White;
+            this.btnToggleExplorer.BackColor = Color.FromArgb(28, 28, 48);
+            this.btnToggleExplorer.FlatAppearance.BorderSize = 0;
+            this.btnToggleExplorer.Click += BtnToggleExplorer_Click;
+
+            // Armado final de contenedores:
+            this.splitContainerMain.Panel1.Controls.Add(this.splitContainer);
+            this.splitContainerMain.Panel2.Controls.Add(this.tabOutput);
+
+            this.Controls.Add(this.splitContainerMain);
             this.Controls.Add(this.panelFileExplorer);
-            this.Controls.Add(this.tabOutput);
+            this.Controls.Add(this.btnToggleExplorer);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.toolStrip1);
             this.Controls.Add(this.menuStrip);
 
-            this.ClientSize = new Size(1200, 600);
+            this.ClientSize = new Size(1200, 700);
             this.Name = "MainForm";
-            this.Text = "Compilador ";
+            this.Text = "Compilador";
             this.WindowState = FormWindowState.Maximized;
+        }
+
+        private void BtnToggleExplorer_Click(object sender, EventArgs e)
+        {
+            panelFileExplorer.Visible = !panelFileExplorer.Visible;
         }
 
         private void ConfigureModernButton(Button button, string text)

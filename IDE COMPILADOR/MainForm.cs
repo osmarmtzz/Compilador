@@ -40,6 +40,17 @@ namespace IDE_COMPILADOR
 
             // Moderniza botones del explorador
             ModernizarBotonesFileExplorer();
+            // Cargar ícono para los nodos del explorador de archivos
+            Image iconArchivo = Image.FromFile("Resources/Icons/archivo.png");
+            Bitmap smallIcon = new Bitmap(iconArchivo, new Size(16, 16));
+            fileExplorer.ImageList = new ImageList();
+            fileExplorer.ImageList.Images.Add("archivo", smallIcon);
+            // Cargar los íconos una sola vez
+
+
+            fileExplorer.ImageList.Images.Add("php", new Bitmap(Image.FromFile("Resources/Icons/php.png"), new Size(16, 16)));
+
+
 
             // TabControl inferior para errores/resultados
             InicializarTabOutput();
@@ -89,75 +100,119 @@ namespace IDE_COMPILADOR
 
         private void InicializarToolStrip()
         {
-            // Limpiamos el toolStrip existente
+            Image iconNuevoProyecto = Image.FromFile("Resources/Icons/guardar.png");
+            Image iconBuildDebug = Image.FromFile("Resources/Icons/debug.png");
+            Image iconCerrarVentana = Image.FromFile("Resources/Icons/cerrar.png");
+            Image iconCorrerAnalizador = Image.FromFile("Resources/Icons/lexico.png");
+            Image iconCorrerSintactico = Image.FromFile("Resources/Icons/sintactico.png");
+            Image iconCorrerSemantico = Image.FromFile("Resources/Icons/semantico.png");
+            Image iconGenerarCodigo = Image.FromFile("Resources/Icons/codigo-intermedio.png");
+
+
+
+
+
             toolStrip1.Items.Clear();
 
-            // --- Botón "New Project" para limpiar/abrir otro proyecto ---
-            ToolStripButton newProjectButton = new ToolStripButton();
-            newProjectButton.Image = SystemIcons.Application.ToBitmap(); // Puedes reemplazarlo por otro ícono personalizado
-            newProjectButton.ToolTipText = "New Project";
+            // Botón "New Project" con input
+            ToolStripButton newProjectButton = new ToolStripButton
+            {
+                Image = iconNuevoProyecto,
+                ToolTipText = "Nuevo Proyecto"
+            };
+
             newProjectButton.Click += (s, e) =>
             {
-                // Abre una nueva instancia de MainForm (nuevo proyecto)
-                MainForm newForm = new MainForm();
-                newForm.Show();
-            };
-            // Insertamos el botón al inicio del ToolStrip
-            toolStrip1.Items.Insert(0, newProjectButton);
+                using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
+                {
+                    folderDialog.Description = "Selecciona la ubicación para el nuevo proyecto";
 
-            // Botón "Edit"
-            ToolStripButton editButton = new ToolStripButton();
-            editButton.Image = SystemIcons.Information.ToBitmap();
-            editButton.ToolTipText = "Edit";
-            editButton.Click += (s, e) => { /* Aquí podrías implementar lógica de edición (Deshacer, Rehacer, etc.) */ };
-            toolStrip1.Items.Add(editButton);
+                    if (folderDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        string nombreProyecto = Microsoft.VisualBasic.Interaction.InputBox(
+                            "Escribe el nombre del nuevo proyecto:", "Nuevo Proyecto", "MiProyecto");
+
+                        if (!string.IsNullOrWhiteSpace(nombreProyecto))
+                        {
+                            string rutaCompleta = Path.Combine(folderDialog.SelectedPath, nombreProyecto);
+
+                            try
+                            {
+                                Directory.CreateDirectory(rutaCompleta);
+                                MessageBox.Show($"Proyecto creado en:\n{rutaCompleta}", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                                MainForm nuevoForm = new MainForm
+                                {
+                                    Text = nombreProyecto // Cambia el título de la ventana
+                                };
+
+                                // Si deseas guardar la ruta, puedes hacerlo aquí:
+                                nuevoForm.currentFilePath = rutaCompleta;
+
+                                nuevoForm.Show();
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show("Error al crear la carpeta:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                    }
+                }
+            };
+            toolStrip1.Items.Add(newProjectButton);
+
 
             // Botón "Build and Debug"
-            ToolStripButton buildDebugButton = new ToolStripButton();
-            buildDebugButton.Image = SystemIcons.Shield.ToBitmap();
-            buildDebugButton.ToolTipText = "Build and Debug";
-            buildDebugButton.Click += (s, e) => { /* Lógica de compilación y depuración */ };
+            ToolStripButton buildDebugButton = new ToolStripButton
+            {
+                Image = iconBuildDebug,
+                ToolTipText = "Build and Debug"
+            };
+            buildDebugButton.Click += (s, e) => { /* lógica */ };
             toolStrip1.Items.Add(buildDebugButton);
 
-            // Botón "Open File"
-            ToolStripButton openFileButton = new ToolStripButton();
-            openFileButton.Image = SystemIcons.WinLogo.ToBitmap();
-            openFileButton.ToolTipText = "Open File";
-            openFileButton.Click += (s, e) => OpenFile();
-            toolStrip1.Items.Add(openFileButton);
-
-            // Botón "Close" (Cerrar ventana)
-            ToolStripButton closeButton = new ToolStripButton();
-            closeButton.Image = SystemIcons.Error.ToBitmap();
-            closeButton.ToolTipText = "Close Window";
+            // Botón "Cerrar ventana"
+            ToolStripButton closeButton = new ToolStripButton
+            {
+                Image = iconCerrarVentana,
+                ToolTipText = "Cerrar ventana"
+            };
             closeButton.Click += (s, e) => this.Close();
             toolStrip1.Items.Add(closeButton);
 
-            // Botón "Léxico" (Lexical Analysis)
-            ToolStripButton lexicoButton = new ToolStripButton();
-            lexicoButton.Image = SystemIcons.Information.ToBitmap();
-            lexicoButton.ToolTipText = "Lexical Analysis";
+            // Botón "Léxico"
+            ToolStripButton lexicoButton = new ToolStripButton
+            {
+                Image = iconCorrerAnalizador,
+                ToolTipText = "Análisis Léxico"
+            };
             lexicoButton.Click += (s, e) => EjecutarFase("Lexical Analysis");
             toolStrip1.Items.Add(lexicoButton);
 
-            // Botón "Sintáctico" (Syntax Analysis)
-            ToolStripButton sintacticoButton = new ToolStripButton();
-            sintacticoButton.Image = SystemIcons.Question.ToBitmap();
-            sintacticoButton.ToolTipText = "Syntax Analysis";
+            // Botón "Sintáctico"
+            ToolStripButton sintacticoButton = new ToolStripButton
+            {
+                Image = iconCorrerSintactico,
+                ToolTipText = "Análisis Sintáctico"
+            };
             sintacticoButton.Click += (s, e) => EjecutarFase("Syntax Analysis");
             toolStrip1.Items.Add(sintacticoButton);
 
-            // Botón "Semántico" (Semantic Analysis)
-            ToolStripButton semanticoButton = new ToolStripButton();
-            semanticoButton.Image = SystemIcons.Shield.ToBitmap();
-            semanticoButton.ToolTipText = "Semantic Analysis";
+            // Botón "Semántico"
+            ToolStripButton semanticoButton = new ToolStripButton
+            {
+                Image = iconCorrerSemantico,
+                ToolTipText = "Análisis Semántico"
+            };
             semanticoButton.Click += (s, e) => EjecutarFase("Semantic Analysis");
             toolStrip1.Items.Add(semanticoButton);
 
-            // Botón "Compilar" (Compile)
-            ToolStripButton compilarButton = new ToolStripButton();
-            compilarButton.Image = SystemIcons.Exclamation.ToBitmap();
-            compilarButton.ToolTipText = "Compile";
+            // Botón "Compilar"
+            ToolStripButton compilarButton = new ToolStripButton
+            {
+                Image = iconGenerarCodigo,
+                ToolTipText = "Generar Código Intermedio"
+            };
             compilarButton.Click += (s, e) => EjecutarFase("Intermediate Code");
             toolStrip1.Items.Add(compilarButton);
         }
@@ -168,13 +223,21 @@ namespace IDE_COMPILADOR
 
         private void ModernizarBotonesFileExplorer()
         {
+
+            Image iconOriginal2 = Image.FromFile("Resources/Icons/agregar-archivo.png");
+            Image iconAgregar = new Bitmap(iconOriginal2, new Size(24, 24));
+            Image iconOriginal = Image.FromFile("Resources/Icons/basura.png");
+            Image iconBasura = new Bitmap(iconOriginal, new Size(24, 24));
+
             // Ajustes para "Agregar Archivo"
             btnAgregarArchivo.FlatStyle = FlatStyle.Flat;
             btnAgregarArchivo.FlatAppearance.BorderSize = 0;
             btnAgregarArchivo.BackColor = Color.FromArgb(45, 45, 48);
             btnAgregarArchivo.FlatAppearance.MouseOverBackColor = Color.FromArgb(63, 63, 70);
             btnAgregarArchivo.Size = new Size(32, 32);
-            btnAgregarArchivo.Image = CrearIconoConPlus();
+            btnAgregarArchivo.Image = iconAgregar;
+            btnEliminarArchivo.Text = ""; // Asegura que no haya texto ni emoji
+
 
             // Ajustes para "Eliminar Archivo"
             btnEliminarArchivo.FlatStyle = FlatStyle.Flat;
@@ -182,8 +245,11 @@ namespace IDE_COMPILADOR
             btnEliminarArchivo.BackColor = Color.FromArgb(45, 45, 48);
             btnEliminarArchivo.FlatAppearance.MouseOverBackColor = Color.FromArgb(63, 63, 70);
             btnEliminarArchivo.Size = new Size(32, 32);
-            btnEliminarArchivo.Image = new Bitmap(SystemIcons.Error.ToBitmap(), new Size(24, 24));
+            btnEliminarArchivo.Image = iconBasura;
+            btnEliminarArchivo.Text = ""; // Asegura que no haya texto ni emoji
+
         }
+
 
         // Crea un ícono base con un "plus" verde en la esquina
         private Bitmap CrearIconoConPlus()
@@ -376,7 +442,7 @@ private void EjecutarFase(string fase)
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
+                openFileDialog.Filter = "Archivos permitidos (*.txt;*.html;*.php;*.java;*.cs)|*.txt;*.html;*.php;*.java;*.cs|Todos los archivos (*.*)|*.*";
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     currentFilePath = openFileDialog.FileName;
@@ -414,19 +480,44 @@ private void EjecutarFase(string fase)
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
+                openFileDialog.Filter = "Archivos permitidos (*.txt;*.html;*.php;*.java;*.cs)|*.txt;*.html;*.php;*.java;*.cs|Todos los archivos (*.*)|*.*";
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     string filePath = openFileDialog.FileName;
                     if (!FileNodeExists(filePath))
                     {
-                        TreeNode node = new TreeNode(Path.GetFileName(filePath));
-                        node.Tag = filePath;
+                        string extension = Path.GetExtension(filePath).ToLower();
+                        string iconKey = "default"; // Icono por defecto
+
+                        switch (extension)
+                        {
+                            case ".php":
+                                iconKey = "php";
+                                break;
+                            case ".html":
+                                iconKey = "html";
+                                break;
+                            case ".java":
+                                iconKey = "java";
+                                break;
+                            case ".cs":
+                                iconKey = "cs";
+                                break;
+                        }
+
+                        TreeNode node = new TreeNode(Path.GetFileName(filePath))
+                        {
+                            Tag = filePath,
+                            ImageKey = iconKey,
+                            SelectedImageKey = iconKey
+                        };
+
                         fileExplorer.Nodes.Add(node);
                     }
                 }
             }
         }
+
 
         private bool FileNodeExists(string filePath)
         {
