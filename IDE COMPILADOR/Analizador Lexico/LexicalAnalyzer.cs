@@ -20,6 +20,12 @@ namespace IDE_COMPILADOR.AnalizadorLexico
         private int i = 0;
         private string texto;
 
+        private readonly HashSet<string> palabrasReservadas = new()
+    {
+        "if", "else", "end", "do", "while", "switch", "case",
+        "int", "float", "main", "cin", "cout"
+    };
+
         public (List<Token> tokens, List<string> errores) Analizar(string entrada)
         {
             tokens.Clear();
@@ -51,17 +57,21 @@ namespace IDE_COMPILADOR.AnalizadorLexico
                 {
                     ReconocerComentario();
                 }
-                else if ("=><".Contains(actual))
+                else if ("=><!".Contains(actual))
                 {
-                    ReconocerOperadorRelacional();
+                    ReconocerOperadorRelacionalYLogico();
                 }
-                else if (actual == '&')
+                else if ("&|".Contains(actual))
                 {
-                    ReconocerOperadorLogico();
+                    ReconocerOperadorLogicoComplejo();
                 }
-                else if ("|*()KZ1;{}".Contains(actual))
+                else if ("+-*%^".Contains(actual))
                 {
-                    tokens.Add(new Token("OperadorEspecial", actual.ToString(), linea, columna));
+                    ReconocerOperadorAritmetico();
+                }
+                else if ("(){};,.".Contains(actual))
+                {
+                    tokens.Add(new Token("Simbolo", actual.ToString(), linea, columna));
                     columna++; i++;
                 }
                 else
@@ -84,7 +94,10 @@ namespace IDE_COMPILADOR.AnalizadorLexico
                 i++;
                 columna++;
             }
-            tokens.Add(new Token("Identificador", sb.ToString(), linea, inicioColumna));
+
+            string valor = sb.ToString();
+            string tipo = palabrasReservadas.Contains(valor) ? "PalabraReservada" : "Identificador";
+            tokens.Add(new Token(tipo, valor, linea, inicioColumna));
         }
 
         private void ReconocerNumero()
@@ -120,7 +133,7 @@ namespace IDE_COMPILADOR.AnalizadorLexico
             if (puntoEncontrado)
                 tokens.Add(new Token("PuntoFlotante", sb.ToString(), linea, inicioColumna));
             else
-                tokens.Add(new Token("Número", sb.ToString(), linea, inicioColumna));
+                tokens.Add(new Token("Numero", sb.ToString(), linea, inicioColumna));
         }
 
         private void ReconocerComentario()
@@ -159,20 +172,20 @@ namespace IDE_COMPILADOR.AnalizadorLexico
                 }
                 else
                 {
-                    tokens.Add(new Token("OperadorDivision", "/", linea, columna));
+                    tokens.Add(new Token("OperadorAritmetico", "/", linea, columna));
                     i++;
                     columna++;
                 }
             }
             else
             {
-                tokens.Add(new Token("OperadorDivision", "/", linea, columna));
+                tokens.Add(new Token("OperadorAritmetico", "/", linea, columna));
                 i++;
                 columna++;
             }
         }
 
-        private void ReconocerOperadorRelacional()
+        private void ReconocerOperadorRelacionalYLogico()
         {
             int inicioColumna = columna;
             char actual = texto[i];
@@ -181,30 +194,52 @@ namespace IDE_COMPILADOR.AnalizadorLexico
 
             if (i < texto.Length && texto[i] == '=')
             {
-                tokens.Add(new Token("OperadorRelacional", actual + "=", linea, inicioColumna));
+                string combinado = actual + "=";
+                string tipo = (actual == '!') ? "OperadorLogico" : "OperadorRelacional";
+                tokens.Add(new Token(tipo, combinado, linea, inicioColumna));
                 i++;
                 columna++;
             }
             else
             {
-                tokens.Add(new Token("OperadorRelacional", actual.ToString(), linea, inicioColumna));
+                string tipo = (actual == '!') ? "OperadorLogico" : (actual == '=' ? "Asignacion" : "OperadorRelacional");
+                tokens.Add(new Token(tipo, actual.ToString(), linea, inicioColumna));
             }
         }
 
-        private void ReconocerOperadorLogico()
+        private void ReconocerOperadorLogicoComplejo()
         {
             int inicioColumna = columna;
+            char actual = texto[i];
             i++;
             columna++;
-            if (i < texto.Length && texto[i] == '&')
+            if (i < texto.Length && texto[i] == actual)
             {
-                tokens.Add(new Token("OperadorLogico", "&&", linea, inicioColumna));
+                tokens.Add(new Token("OperadorLogico", new string(actual, 2), linea, inicioColumna));
                 i++;
                 columna++;
             }
             else
             {
                 errores.Add($"Error léxico: operador lógico incompleto en línea {linea}, columna {inicioColumna}");
+            }
+        }
+
+        private void ReconocerOperadorAritmetico()
+        {
+            int inicioColumna = columna;
+            char actual = texto[i];
+            i++;
+            columna++;
+            if ((actual == '+' || actual == '-') && i < texto.Length && texto[i] == actual)
+            {
+                tokens.Add(new Token("OperadorAritmetico", new string(actual, 2), linea, inicioColumna));
+                i++;
+                columna++;
+            }
+            else
+            {
+                tokens.Add(new Token("OperadorAritmetico", actual.ToString(), linea, inicioColumna));
             }
         }
     }

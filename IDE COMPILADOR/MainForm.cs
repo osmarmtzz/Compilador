@@ -371,8 +371,10 @@ private void EjecutarFase(string fase)
 
                     LexicalAnalyzer analizador = new LexicalAnalyzer();
                     var (tokens, errores) = analizador.Analizar(txtEditor.Text);
+                        AplicarColoreado(tokens);
 
-                    foreach (TabPage pagina in tabOutput.TabPages)
+
+                        foreach (TabPage pagina in tabOutput.TabPages)
                     {
                         if (pagina.Text.Equals(tabName, StringComparison.OrdinalIgnoreCase))
                         {
@@ -416,8 +418,54 @@ private void EjecutarFase(string fase)
                 break;
         }
     }
+        private void AplicarColoreado(List<Token> tokens)
+        {
+            txtEditor.SelectAll();
+            txtEditor.SelectionColor = Color.White;
 
-    private void MostrarMensajeTemporal(string tabName, string mensaje)
+            foreach (var token in tokens)
+            {
+                try
+                {
+                    int start = txtEditor.GetFirstCharIndexFromLine(token.Linea - 1) + token.Columna - 1;
+                    txtEditor.Select(start, token.Valor.Length);
+
+                    switch (token.Tipo)
+                    {
+                        case "Numero":
+                        case "PuntoFlotante":
+                            txtEditor.SelectionColor = Color.LightGreen; // Color 1
+                            break;
+                        case "Identificador":
+                            txtEditor.SelectionColor = Color.Cyan; // Color 2
+                            break;
+                        case "ComentarioInline":
+                        case "ComentarioExtenso":
+                            txtEditor.SelectionColor = Color.Gray; // Color 3
+                            break;
+                        case "PalabraReservada":
+                            txtEditor.SelectionColor = Color.Orange; // Color 4
+                            break;
+                        case "OperadorAritmetico":
+                            txtEditor.SelectionColor = Color.Yellow; // Color 5
+                            break;
+                        case "OperadorRelacional":
+                        case "OperadorLogico":
+                        case "Asignacion":
+                            txtEditor.SelectionColor = Color.Red; // Color 6
+                            break;
+                    }
+                }
+                catch
+                {
+                    // Evita errores si el índice es inválido
+                }
+            }
+
+            txtEditor.SelectionLength = 0; // limpia selección
+        }
+
+        private void MostrarMensajeTemporal(string tabName, string mensaje)
     {
         foreach (TabPage pagina in tabOutput.TabPages)
         {
