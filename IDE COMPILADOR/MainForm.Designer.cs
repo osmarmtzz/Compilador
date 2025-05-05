@@ -56,6 +56,14 @@ namespace IDE_COMPILADOR
             this.panelAnalysis = new Panel();
             this.tabAnalysis = new TabControl();
             this.tabLexico = new TabPage();
+            this.rtbLexico = new RichTextBox();
+            this.rtbLexico.Dock = DockStyle.Fill;
+            this.rtbLexico.Font = new Font("Consolas", 10);
+            this.rtbLexico.BackColor = Color.Black;
+            this.rtbLexico.ForeColor = Color.White;
+            this.rtbLexico.ReadOnly = true;
+            this.tabLexico.Controls.Add(this.rtbLexico);
+
             this.tabSintactico = new TabPage();
             this.tabSemantico = new TabPage();
             this.tabHashTable = new TabPage();

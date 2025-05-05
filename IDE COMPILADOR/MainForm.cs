@@ -10,6 +10,8 @@ namespace IDE_COMPILADOR
     public partial class MainForm : Form
     {
         private string currentFilePath = string.Empty;
+        private RichTextBox rtbLexico;
+
 
         public MainForm()
         {
@@ -359,65 +361,76 @@ namespace IDE_COMPILADOR
         #region Lógica de Menú/Compilación
 
 
-private void EjecutarFase(string fase)
-    {
-        string tabName;
-
-        switch (fase)
+        private void EjecutarFase(string fase)
         {
-            case "Lexical Analysis":
-                {
-                    tabName = "Errores Lexicos";
+            string tabName;
 
-                    LexicalAnalyzer analizador = new LexicalAnalyzer();
-                    var (tokens, errores) = analizador.Analizar(txtEditor.Text);
+            switch (fase)
+            {
+                case "Lexical Analysis":
+                    {
+                        tabName = "Errores Lexicos";
+
+                        LexicalAnalyzer analizador = new LexicalAnalyzer();
+                        var (tokens, errores) = analizador.Analizar(txtEditor.Text);
                         AplicarColoreado(tokens);
 
-
+                        // Mostramos errores en tabOutput como antes
                         foreach (TabPage pagina in tabOutput.TabPages)
-                    {
-                        if (pagina.Text.Equals(tabName, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (pagina.Controls.Count > 0 && pagina.Controls[0] is RichTextBox rtb)
+                            if (pagina.Text.Equals(tabName, StringComparison.OrdinalIgnoreCase))
                             {
-                                if (errores.Count > 0)
+                                if (pagina.Controls.Count > 0 && pagina.Controls[0] is RichTextBox rtb)
                                 {
-                                    rtb.Text = "Errores Léxicos Encontrados:\n\n" + string.Join(Environment.NewLine, errores);
+                                    if (errores.Count > 0)
+                                    {
+                                        rtb.Text = "Errores Léxicos Encontrados:\n\n" + string.Join(Environment.NewLine, errores);
+                                    }
+                                    else
+                                    {
+                                        rtb.Text = "Sin errores léxicos encontrados.";
+                                    }
                                 }
-                                else
-                                {
-                                    rtb.Text = "Análisis Léxico Correcto:\n\n" +
-                                               string.Join(Environment.NewLine, tokens.Select(t => t.ToString()));
-                                }
+                                tabOutput.SelectedTab = pagina;
+                                break;
                             }
-                            tabOutput.SelectedTab = pagina;
-                            break;
                         }
+
+                        // Mostramos los tokens válidos en la pestaña "?? Léxico"
+                        rtbLexico.Clear();
+                        rtbLexico.Text = string.Join(Environment.NewLine, tokens.Select(t => t.ToString()));
+                        tabAnalysis.SelectedTab = tabLexico;
+
+                        break;
                     }
+
+                case "Syntax Analysis":
+                    tabName = "Errores Sintacticos";
+                    MostrarMensajeTemporal(tabName, "Ejecutando análisis sintáctico...");
                     break;
-                }
-            case "Syntax Analysis":
-                tabName = "Errores Sintacticos";
-                MostrarMensajeTemporal(tabName, "Ejecutando análisis sintáctico...");
-                break;
-            case "Semantic Analysis":
-                tabName = "Errores Semanticos";
-                MostrarMensajeTemporal(tabName, "Ejecutando análisis semántico...");
-                break;
-            case "Intermediate Code":
-                tabName = "Resultados";
-                MostrarMensajeTemporal(tabName, "Generando código intermedio...");
-                break;
-            case "Execution":
-                tabName = "Resultados";
-                MostrarMensajeTemporal(tabName, "Ejecutando programa...");
-                break;
-            default:
-                tabName = "Resultados";
-                MostrarMensajeTemporal(tabName, $"Fase '{fase}' en ejecución...");
-                break;
+
+                case "Semantic Analysis":
+                    tabName = "Errores Semanticos";
+                    MostrarMensajeTemporal(tabName, "Ejecutando análisis semántico...");
+                    break;
+
+                case "Intermediate Code":
+                    tabName = "Resultados";
+                    MostrarMensajeTemporal(tabName, "Generando código intermedio...");
+                    break;
+
+                case "Execution":
+                    tabName = "Resultados";
+                    MostrarMensajeTemporal(tabName, "Ejecutando programa...");
+                    break;
+
+                default:
+                    tabName = "Resultados";
+                    MostrarMensajeTemporal(tabName, $"Fase '{fase}' en ejecución...");
+                    break;
+            }
         }
-    }
+
         private void AplicarColoreado(List<Token> tokens)
         {
             txtEditor.SelectAll();
