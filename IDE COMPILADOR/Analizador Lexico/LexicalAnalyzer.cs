@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿// File: LexicalAnalyzer.cs
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,235 +7,124 @@ namespace IDE_COMPILADOR.AnalizadorLexico
 {
     public class LexicalAnalyzer
     {
-        private List<Token> tokens = new List<Token>();
-        private List<string> errores = new List<string>();
+        private readonly DFA _dfa = new();
+        private readonly List<Token> _tokens = new();
+        private readonly List<string> _errores = new();
+        private readonly HashSet<string> _palabrasReservadas = new()
+        {
+            "if", "else", "end", "do", "while", "switch", "case",
+            "int", "float", "main", "cin", "cout"
+        };
 
-        private int linea = 1;
-        private int columna = 1;
-        private int i = 0;
-        private string texto;
-
-        private readonly HashSet<string> palabrasReservadas = new()
-    {
-        "if", "else", "end", "do", "while", "switch", "case",
-        "int", "float", "main", "cin", "cout"
-    };
-
+        /// <summary>
+        /// Analiza la cadena de entrada y devuelve la lista de tokens y errores.
+        /// </summary>
         public (List<Token> tokens, List<string> errores) Analizar(string entrada)
         {
-            tokens.Clear();
-            errores.Clear();
-            linea = 1;
-            columna = 1;
-            i = 0;
-            texto = entrada;
+            _tokens.Clear();
+            _errores.Clear();
+            int linea = 1, columna = 1;
+            int pos = 0;
 
-            while (i < texto.Length)
+            while (pos < entrada.Length)
             {
-                char actual = texto[i];
-
-                if (char.IsWhiteSpace(actual))
+                // 1) Saltar espacios y nueva línea
+                char c = entrada[pos];
+                if (char.IsWhiteSpace(c))
                 {
-                    if (actual == '\n') { linea++; columna = 1; }
-                    else { columna++; }
-                    i++;
-                }
-                else if (char.IsLetter(actual))
-                {
-                    ReconocerIdentificador();
-                }
-                else if (char.IsDigit(actual) || actual == '+' || actual == '-')
-                {
-                    ReconocerNumero();
-                }
-                else if (actual == '/')
-                {
-                    ReconocerComentario();
-                }
-                else if ("=><!".Contains(actual))
-                {
-                    ReconocerOperadorRelacionalYLogico();
-                }
-                else if ("&|".Contains(actual))
-                {
-                    ReconocerOperadorLogicoComplejo();
-                }
-                else if ("+-*%^".Contains(actual))
-                {
-                    ReconocerOperadorAritmetico();
-                }
-                else if ("(){};,.".Contains(actual))
-                {
-                    tokens.Add(new Token("Simbolo", actual.ToString(), linea, columna));
-                    columna++; i++;
-                }
-                else
-                {
-                    errores.Add($"Error léxico: símbolo inesperado '{actual}' en línea {linea}, columna {columna}");
-                    columna++; i++;
-                }
-            }
-
-            return (tokens, errores);
-        }
-
-        private void ReconocerIdentificador()
-        {
-            int inicioColumna = columna;
-            StringBuilder sb = new StringBuilder();
-            while (i < texto.Length && (char.IsLetterOrDigit(texto[i])))
-            {
-                sb.Append(texto[i]);
-                i++;
-                columna++;
-            }
-
-            string valor = sb.ToString();
-            string tipo = palabrasReservadas.Contains(valor) ? "PalabraReservada" : "Identificador";
-            tokens.Add(new Token(tipo, valor, linea, inicioColumna));
-        }
-
-        private void ReconocerNumero()
-        {
-            int inicioColumna = columna;
-            StringBuilder sb = new StringBuilder();
-
-            if (texto[i] == '+' || texto[i] == '-')
-            {
-                sb.Append(texto[i]);
-                i++;
-                columna++;
-            }
-
-            bool puntoEncontrado = false;
-            while (i < texto.Length && (char.IsDigit(texto[i]) || texto[i] == '.'))
-            {
-                if (texto[i] == '.')
-                {
-                    if (puntoEncontrado)
+                    if (c == '\n')
                     {
-                        errores.Add($"Error léxico: número con múltiples puntos en línea {linea}, columna {columna}");
-                        break;
+                        linea++;
+                        columna = 1;
                     }
-                    puntoEncontrado = true;
-                }
-
-                sb.Append(texto[i]);
-                i++;
-                columna++;
-            }
-
-            if (puntoEncontrado)
-                tokens.Add(new Token("PuntoFlotante", sb.ToString(), linea, inicioColumna));
-            else
-                tokens.Add(new Token("Numero", sb.ToString(), linea, inicioColumna));
-        }
-
-        private void ReconocerComentario()
-        {
-            int inicioColumna = columna;
-
-            if (i + 1 < texto.Length)
-            {
-                if (texto[i + 1] == '*')
-                {
-                    i += 2;
-                    columna += 2;
-                    while (i + 1 < texto.Length && !(texto[i] == '*' && texto[i + 1] == '/'))
+                    else
                     {
-                        if (texto[i] == '\n') { linea++; columna = 1; }
-                        else { columna++; }
-                        i++;
-                    }
-                    if (i + 1 < texto.Length)
-                    {
-                        i += 2;
-                        columna += 2;
-                    }
-                    tokens.Add(new Token("ComentarioExtenso", "Comentario Extenso", linea, inicioColumna));
-                }
-                else if (texto[i + 1] == '/')
-                {
-                    i += 2;
-                    columna += 2;
-                    while (i < texto.Length && texto[i] != '\n')
-                    {
-                        i++;
                         columna++;
                     }
-                    tokens.Add(new Token("ComentarioInline", "Comentario In-line", linea, inicioColumna));
+                    pos++;
+                    continue;
+                }
+
+                // 2) Reconocimiento con DFA (maximal munch)
+                var sb = new StringBuilder();
+                int startCol = columna;
+                var state = DFA.State.START;
+                var lastAccept = DFA.State.START;
+                int lastAcceptPos = -1;
+                int iter = pos;
+
+                while (iter < entrada.Length)
+                {
+                    char cc = entrada[iter];
+                    var next = _dfa.GetNext(state, cc);
+                    if (next == DFA.State.ERROR) break;
+
+                    state = next;
+                    sb.Append(cc);
+                    if (_dfa.IsAccepting(state))
+                    {
+                        lastAccept = state;
+                        lastAcceptPos = iter;
+                    }
+                    iter++;
+                }
+
+                if (lastAcceptPos >= pos)
+                {
+                    // Extraer lexema válido
+                    string lexema = sb.ToString(0, lastAcceptPos - pos + 1);
+                    string tipo = ClasificarToken(lastAccept, lexema);
+                    _tokens.Add(new Token(tipo, lexema, linea, startCol));
+
+                    // Avanzar posición y actualizar línea/columna
+                    for (int k = pos; k <= lastAcceptPos; k++)
+                    {
+                        if (entrada[k] == '\n')
+                        {
+                            linea++;
+                            columna = 1;
+                        }
+                        else
+                        {
+                            columna++;
+                        }
+                    }
+                    pos = lastAcceptPos + 1;
                 }
                 else
                 {
-                    tokens.Add(new Token("OperadorAritmetico", "/", linea, columna));
-                    i++;
+                    // Símbolo inesperado
+                    _errores.Add($"Error léxico: símbolo '{entrada[pos]}' en línea {linea}, columna {columna}");
+                    pos++;
                     columna++;
                 }
             }
-            else
-            {
-                tokens.Add(new Token("OperadorAritmetico", "/", linea, columna));
-                i++;
-                columna++;
-            }
+
+            return (_tokens, _errores);
         }
 
-        private void ReconocerOperadorRelacionalYLogico()
+        private string ClasificarToken(DFA.State estado, string lexema)
         {
-            int inicioColumna = columna;
-            char actual = texto[i];
-            i++;
-            columna++;
-
-            if (i < texto.Length && texto[i] == '=')
+            return estado switch
             {
-                string combinado = actual + "=";
-                string tipo = (actual == '!') ? "OperadorLogico" : "OperadorRelacional";
-                tokens.Add(new Token(tipo, combinado, linea, inicioColumna));
-                i++;
-                columna++;
-            }
-            else
-            {
-                string tipo = (actual == '!') ? "OperadorLogico" : (actual == '=' ? "Asignacion" : "OperadorRelacional");
-                tokens.Add(new Token(tipo, actual.ToString(), linea, inicioColumna));
-            }
-        }
-
-        private void ReconocerOperadorLogicoComplejo()
-        {
-            int inicioColumna = columna;
-            char actual = texto[i];
-            i++;
-            columna++;
-            if (i < texto.Length && texto[i] == actual)
-            {
-                tokens.Add(new Token("OperadorLogico", new string(actual, 2), linea, inicioColumna));
-                i++;
-                columna++;
-            }
-            else
-            {
-                errores.Add($"Error léxico: operador lógico incompleto en línea {linea}, columna {inicioColumna}");
-            }
-        }
-
-        private void ReconocerOperadorAritmetico()
-        {
-            int inicioColumna = columna;
-            char actual = texto[i];
-            i++;
-            columna++;
-            if ((actual == '+' || actual == '-') && i < texto.Length && texto[i] == actual)
-            {
-                tokens.Add(new Token("OperadorAritmetico", new string(actual, 2), linea, inicioColumna));
-                i++;
-                columna++;
-            }
-            else
-            {
-                tokens.Add(new Token("OperadorAritmetico", actual.ToString(), linea, inicioColumna));
-            }
+                DFA.State.IDENTIFIER =>
+                    _palabrasReservadas.Contains(lexema) ? "PalabraReservada" : "Identificador",
+                DFA.State.NUMBER => "Numero",
+                DFA.State.FLOAT => "PuntoFlotante",
+                DFA.State.PLUS
+              or DFA.State.MINUS
+              or DFA.State.MULTIPLY
+              or DFA.State.MODULUS
+              or DFA.State.POWER
+              or DFA.State.SLASH => "OperadorAritmetico",
+                DFA.State.RELATIONAL => "OperadorRelacional",
+                DFA.State.ASSIGN => "OperadorLogico",
+                DFA.State.LOGICAL => "OperadorLogico",
+                DFA.State.SYMBOL => "Simbolo",
+                DFA.State.COMMENT_LINE => "ComentarioInline",
+                DFA.State.COMMENT_BLOCK_END => "ComentarioExtenso",
+                _ => "Desconocido"
+            };
         }
     }
 }
