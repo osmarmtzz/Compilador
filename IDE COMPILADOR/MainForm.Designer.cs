@@ -24,6 +24,8 @@ namespace IDE_COMPILADOR
         private TabPage tabSemantico;
         private TabPage tabHashTable;
         private TabPage tabCodigoIntermedio;
+        private TabPage tabColores;                  // NUEVA pestaña
+        private TableLayoutPanel tlpColores;
         private Panel panelFileExplorer;
         private FlowLayoutPanel panelFileExplorerButtons;
         private Button btnAgregarArchivo;

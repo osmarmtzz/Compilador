@@ -16,9 +16,7 @@ namespace IDE_COMPILADOR.AnalizadorLexico
             "int", "float", "main", "cin", "cout"
         };
 
-        /// <summary>
         /// Analiza la cadena de entrada y devuelve la lista de tokens y errores.
-        /// </summary>
         public (List<Token> tokens, List<string> errores) Analizar(string entrada)
         {
             _tokens.Clear();
@@ -68,6 +66,20 @@ namespace IDE_COMPILADOR.AnalizadorLexico
                     }
                     iter++;
                 }
+                // Detectar punto decimal sin dígito (estado DECIMAL_POINT)
+                if (state == DFA.State.DECIMAL_POINT)
+                {
+                    // "malFormado" contendrá por ejemplo "32."
+                    string malFormado = sb.ToString();
+                    _errores.Add(
+                        $"Error léxico: número mal formado '{malFormado}' en línea {linea}, columna {startCol}"
+                    );
+                    // Avanzamos para saltarnos el punto mal formado
+                    pos += malFormado.Length;
+                    columna += malFormado.Length;
+                    continue;
+                }
+
 
                 if (lastAcceptPos >= pos)
                 {
@@ -111,20 +123,31 @@ namespace IDE_COMPILADOR.AnalizadorLexico
                     _palabrasReservadas.Contains(lexema) ? "PalabraReservada" : "Identificador",
                 DFA.State.NUMBER => "Numero",
                 DFA.State.FLOAT => "PuntoFlotante",
-                DFA.State.PLUS
-              or DFA.State.MINUS
-              or DFA.State.MULTIPLY
-              or DFA.State.MODULUS
-              or DFA.State.POWER
-              or DFA.State.SLASH => "OperadorAritmetico",
-                DFA.State.RELATIONAL => "OperadorRelacional",
-                DFA.State.ASSIGN => "OperadorLogico",
-                DFA.State.LOGICAL => "OperadorLogico",
+
+                // ++ y -- como aritméticos
+                DFA.State.PLUSPLUS => "OperadorAritmetico",
+                DFA.State.MINUSMINUS => "OperadorAritmetico",
+
+                // + y - simples
+                DFA.State.PLUS => "OperadorAritmetico",
+                DFA.State.MINUS => "OperadorAritmetico",
+
+                DFA.State.MULTIPLY => "OperadorAritmetico",
+                DFA.State.MODULUS => "OperadorAritmetico",
+                DFA.State.POWER => "OperadorAritmetico",
+                DFA.State.SLASH => "OperadorAritmetico",
+
+                DFA.State.RELATIONAL
+                or DFA.State.LOGICAL
+                or DFA.State.ASSIGN => "OperadorLogico",
+
                 DFA.State.SYMBOL => "Simbolo",
                 DFA.State.COMMENT_LINE => "ComentarioInline",
                 DFA.State.COMMENT_BLOCK_END => "ComentarioExtenso",
+
                 _ => "Desconocido"
             };
         }
+
     }
 }

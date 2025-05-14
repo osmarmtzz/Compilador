@@ -1,5 +1,4 @@
-﻿// File: DFA.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace IDE_COMPILADOR.AnalizadorLexico
@@ -11,9 +10,12 @@ namespace IDE_COMPILADOR.AnalizadorLexico
             START,
             IDENTIFIER,
             NUMBER,
+            DECIMAL_POINT,    // tras el punto, antes de dígito
             FLOAT,
             PLUS,
+            PLUSPLUS,
             MINUS,
+            MINUSMINUS,
             MULTIPLY,
             MODULUS,
             POWER,
@@ -46,7 +48,7 @@ namespace IDE_COMPILADOR.AnalizadorLexico
 
         private void BuildTransitions()
         {
-            // 1) Espacios → queda en START
+            // 1) Espacios → vuelve a START
             AddTransition(State.START, ch => char.IsWhiteSpace(ch), State.START);
 
             // 2) Identificadores
@@ -56,46 +58,50 @@ namespace IDE_COMPILADOR.AnalizadorLexico
             // 3) Números enteros y reales
             AddTransition(State.START, ch => char.IsDigit(ch), State.NUMBER);
             AddTransition(State.NUMBER, ch => char.IsDigit(ch), State.NUMBER);
-            AddTransition(State.NUMBER, ch => ch == '.', State.FLOAT);
+            AddTransition(State.NUMBER, ch => ch == '.', State.DECIMAL_POINT);
+            AddTransition(State.DECIMAL_POINT, ch => char.IsDigit(ch), State.FLOAT);
             AddTransition(State.FLOAT, ch => char.IsDigit(ch), State.FLOAT);
 
-            // 4 & 8) Operadores aritméticos simples
+            // 4) Operadores ++ y +
             AddTransition(State.START, ch => ch == '+', State.PLUS);
+            AddTransition(State.PLUS, ch => ch == '+', State.PLUSPLUS);
+
+            // 5) Operadores -- y -
             AddTransition(State.START, ch => ch == '-', State.MINUS);
+            AddTransition(State.MINUS, ch => ch == '-', State.MINUSMINUS);
+
+            // 6) Otros aritméticos
             AddTransition(State.START, ch => ch == '*', State.MULTIPLY);
             AddTransition(State.START, ch => ch == '%', State.MODULUS);
             AddTransition(State.START, ch => ch == '^', State.POWER);
 
-            // 5) Slash → división o comentario
+            // 7) Slash → división o comentario
             AddTransition(State.START, ch => ch == '/', State.SLASH);
             AddTransition(State.SLASH, ch => ch == '/', State.COMMENT_LINE);
             AddTransition(State.SLASH, ch => ch == '*', State.COMMENT_BLOCK);
 
-            // 6) Relacionales y asignación
+            // 8) Relacionales y asignación
             AddTransition(State.START, ch => ch == '=' || ch == '>' || ch == '<', State.RELATIONAL);
             AddTransition(State.RELATIONAL, ch => ch == '=', State.RELATIONAL);
-
-            // 6b) '!' → ASSIGN, luego '!=' → RELATIONAL
             AddTransition(State.START, ch => ch == '!', State.ASSIGN);
             AddTransition(State.ASSIGN, ch => ch == '=', State.RELATIONAL);
 
-            // 7) Lógicos complejos &&, ||
+            // 9) Lógicos complejos &&, ||
             AddTransition(State.START, ch => ch == '&', State.LOGICAL);
             AddTransition(State.LOGICAL, ch => ch == '&', State.LOGICAL);
             AddTransition(State.START, ch => ch == '|', State.LOGICAL);
             AddTransition(State.LOGICAL, ch => ch == '|', State.LOGICAL);
 
-            // 9) Símbolos individuales
-            AddTransition(State.START, ch => "(){};,:.".Contains(ch), State.SYMBOL);
+            // 10) Símbolos individuales
+            AddTransition(State.START, ch => "(){};:,".Contains(ch), State.SYMBOL);
 
-            // Comentario de línea: consume hasta '\n'
+            // Comentario de línea: consume todo hasta '\n'
             AddTransition(State.COMMENT_LINE, ch => ch != '\n', State.COMMENT_LINE);
 
             // Comentario de bloque: /* ... */
             AddTransition(State.COMMENT_BLOCK, ch => ch != '*', State.COMMENT_BLOCK);
             AddTransition(State.COMMENT_BLOCK, ch => ch == '*', State.COMMENT_BLOCK_END);
             AddTransition(State.COMMENT_BLOCK_END, ch => ch == '/', State.COMMENT_BLOCK_END);
-            // si no es '/', vuelve a COMMENT_BLOCK
             AddFallback(State.COMMENT_BLOCK_END, State.COMMENT_BLOCK);
         }
 
@@ -107,7 +113,9 @@ namespace IDE_COMPILADOR.AnalizadorLexico
                 State.NUMBER,
                 State.FLOAT,
                 State.PLUS,
+                State.PLUSPLUS,
                 State.MINUS,
+                State.MINUSMINUS,
                 State.MULTIPLY,
                 State.MODULUS,
                 State.POWER,
@@ -122,14 +130,10 @@ namespace IDE_COMPILADOR.AnalizadorLexico
         }
 
         private void AddTransition(State from, Func<char, bool> condition, State to)
-        {
-            _transitions.Add(new Transition { From = from, Condition = condition, To = to });
-        }
+            => _transitions.Add(new Transition { From = from, Condition = condition, To = to });
 
         private void AddFallback(State from, State to)
-        {
-            _transitions.Add(new Transition { From = from, Condition = _ => true, To = to });
-        }
+            => _transitions.Add(new Transition { From = from, Condition = _ => true, To = to });
 
         public State GetNext(State current, char input)
         {

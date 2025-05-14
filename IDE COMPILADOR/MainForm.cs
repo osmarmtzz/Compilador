@@ -318,8 +318,11 @@ namespace IDE_COMPILADOR
         }
         // 1) Flag para detectar pegado
         private bool pasteDetected = false;
+        // para llevar el estado de comentario multilínea
+        private bool insideBlockComment = false;
 
-        // ??? 3) TxtEditor_TextChanged: colorear sólo la línea activa ??????????????
+
+        // 3) TxtEditor_TextChanged: colorear sólo la línea activa 
         private void TxtEditor_TextChanged(object sender, EventArgs e)
         {
             UpdateLineColumn();
@@ -542,9 +545,19 @@ namespace IDE_COMPILADOR
                         }
 
                         // Mostramos los tokens válidos en la pestaña "?? Léxico"
+                        // 1) Filtramos los tokens para omitir los de tipo comentario
+                        var tokensSinComentarios = tokens
+                            .Where(t => t.Tipo != "ComentarioInline" && t.Tipo != "ComentarioExtenso")
+                            .ToList();
+
+                        // 2) Mostramos sólo los tokens restantes en la pestaña Léxico
                         rtbLexico.Clear();
-                        rtbLexico.Text = string.Join(Environment.NewLine, tokens.Select(t => t.ToString()));
+                        rtbLexico.Text = string.Join(
+                            Environment.NewLine,
+                            tokensSinComentarios.Select(t => t.ToString())
+                        );
                         tabAnalysis.SelectedTab = tabLexico;
+
 
                         break;
                     }
