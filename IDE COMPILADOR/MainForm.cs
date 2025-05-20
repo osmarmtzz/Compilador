@@ -339,38 +339,29 @@ namespace IDE_COMPILADOR
             }
             else
             {
-                // 1) Si no hay texto, limpiar colores y salir
-                if (string.IsNullOrEmpty(txtEditor.Text))
+                // Detectar si se escribió un comentario bloque
+                if (txtEditor.Text.Contains("/*") && txtEditor.Text.Contains("*/"))
                 {
-                    // simplemente elimina cualquier color previo
-                    txtEditor.SelectAll();
-                    txtEditor.SelectionColor = Color.White;
-                    return;
+                    var (tokens, _) = analizador.Analizar(txtEditor.Text);
+                    AplicarColoreadoCompleto(tokens);
                 }
-
-                // 2) obtener índices
-                int lineIndex = txtEditor.GetLineFromCharIndex(txtEditor.SelectionStart);
-                int start = txtEditor.GetFirstCharIndexFromLine(lineIndex);
-                int end;
-
-                // si es la última línea
-                if (lineIndex == txtEditor.Lines.Length - 1)
-                    end = txtEditor.Text.Length;
                 else
-                    end = txtEditor.GetFirstCharIndexFromLine(lineIndex + 1);
+                {
+                    // Colorear solo la línea modificada
+                    int lineIndex = txtEditor.GetLineFromCharIndex(txtEditor.SelectionStart);
+                    int start = txtEditor.GetFirstCharIndexFromLine(lineIndex);
+                    int end = (lineIndex == txtEditor.Lines.Length - 1)
+                        ? txtEditor.Text.Length
+                        : txtEditor.GetFirstCharIndexFromLine(lineIndex + 1);
 
-                // 3) validar
-                if (start < 0) start = 0;
-                if (end < 0) end = txtEditor.Text.Length;
-                if (end < start) end = start;
-
-                // 4) extraer y colorear sólo esa línea
-                int length = end - start;
-                string lineaTexto = txtEditor.Text.Substring(start, length);
-                var (tokens, _) = analizador.Analizar(lineaTexto);
-                AplicarColoreadoLinea(tokens, start);
+                    int length = end - start;
+                    string lineaTexto = txtEditor.Text.Substring(start, length);
+                    var (tokens, _) = analizador.Analizar(lineaTexto);
+                    AplicarColoreadoLinea(tokens, start);
+                }
             }
         }
+
 
         // ??? 4) Método para colorear TODO el documento (al cargar) ?????????????????
         private void AplicarColoreadoCompleto(List<Token> tokens)
