@@ -2,7 +2,12 @@
 using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
-using IDE_COMPILADOR.AnalizadorLexico; 
+using IDE_COMPILADOR.AnalizadorLexico;
+using IDE_COMPILADOR.AnalizadorSintactico;
+using IDE_COMPILADOR.AnalizadorSintactico.AST;
+using System.Linq;                                   // ← nuevo
+
+
 
 
 namespace IDE_COMPILADOR
@@ -498,6 +503,15 @@ namespace IDE_COMPILADOR
         #endregion
 
         #region Lógica de Menú/Compilación
+        private RichTextBox GetOutputRichTextBox(string tabName)
+        {
+            foreach (TabPage pagina in tabOutput.TabPages)
+                if (pagina.Text.Equals(tabName, StringComparison.OrdinalIgnoreCase))
+                    return pagina.Controls
+                                 .OfType<RichTextBox>()
+                                 .FirstOrDefault();
+            return null;
+        }
 
 
         private void EjecutarFase(string fase)
@@ -552,11 +566,71 @@ namespace IDE_COMPILADOR
 
                         break;
                     }
+                // Dentro de EjecutarFase(), reemplaza el case "Syntax Analysis" por esto:
 
                 case "Syntax Analysis":
-                    tabName = "Errores Sintacticos";
-                    MostrarMensajeTemporal(tabName, "Ejecutando análisis sintáctico...");
-                    break;
+                    {
+                        // 1) Recalcular tokens
+                        var lexico2 = new LexicalAnalyzer();
+                        var (tokens2, lexErrors) = lexico2.Analizar(txtEditor.Text);
+
+                        // 2) Si hay errores léxicos, los mostramos y salimos
+                        if (lexErrors.Count > 0)
+                        {
+                            var rtbLexErr = GetOutputRichTextBox("Errores Sintacticos");
+                            rtbLexErr.Text = "Antes de parsear, hay errores léxicos:\r\n" +
+                                             string.Join("\r\n", lexErrors);
+                            tabOutput.SelectedTab = tabOutput
+                                .TabPages
+                                .Cast<TabPage>()
+                                .First(tp => tp.Text == "Errores Sintacticos");
+                            break;
+                        }
+
+                        // 3) Parsear
+                        var parser = new SyntaxAnalyzer(tokens2);
+                        ProgramNode ast = null;
+                        try
+                        {
+                            ast = parser.Parse();
+                        }
+                        catch (Exception)
+                        {
+                            parser.Errors.Add("Error interno al parsear.");
+                        }
+
+                        // 4) Mostrar errores o éxito
+                        var rtbSynErr = GetOutputRichTextBox("Errores Sintacticos");
+                        if (parser.Errors.Count > 0)
+                        {
+                            // Hay errores sintácticos
+                            rtbSynErr.Text = "Errores Sintácticos Encontrados:\r\n" +
+                                             string.Join("\r\n", parser.Errors);
+                            tabOutput.SelectedTab = tabOutput
+                                .TabPages
+                                .Cast<TabPage>()
+                                .First(tp => tp.Text == "Errores Sintacticos");
+                        }
+                        else
+                        {
+                            // ¡Éxito!
+                            rtbSynErr.Text = "Análisis sintáctico completado correctamente.\r\n" +
+                                             "No se encontraron errores de sintaxis.";
+                            tabOutput.SelectedTab = tabOutput
+                                .TabPages
+                                .Cast<TabPage>()
+                                .First(tp => tp.Text == "Errores Sintacticos");
+
+                            // Además, mostrar el AST
+                            treeViewSintactico.Nodes.Clear();
+                            treeViewSintactico.Nodes.Add(BuildTree(ast));
+                            tabAnalysis.SelectedTab = tabSintactico;
+                        }
+                        break;
+                    }
+
+
+
 
                 case "Semantic Analysis":
                     tabName = "Errores Semanticos";
@@ -578,6 +652,90 @@ namespace IDE_COMPILADOR
                     MostrarMensajeTemporal(tabName, $"Fase '{fase}' en ejecución...");
                     break;
             }
+        }
+
+        private TreeNode BuildTree(ASTNode node)
+        {
+            switch (node)
+            {
+                case ProgramNode p:
+                    var root = new TreeNode("Program");
+                    foreach (var d in p.Declarations)
+                        root.Nodes.Add(BuildTree(d));
+                    return root;
+
+                case VariableDeclarationNode vd:
+                    var vNode = new TreeNode($"VarDecl: {vd.TypeName}");
+                    foreach (var id in vd.Identifiers)
+                        vNode.Nodes.Add(new TreeNode(id));
+                    return vNode;
+
+                case StatementListNode sl:
+                    var sList = new TreeNode("StatementList");
+                    foreach (var st in sl.Statements)
+                        sList.Nodes.Add(BuildTree(st));
+                    return sList;
+
+                case AssignmentNode a:
+                    var an = new TreeNode($"Assign: {a.Identifier}");
+                    an.Nodes.Add(BuildTree(a.Expression));
+                    return an;
+
+                case IfNode iff:
+                    var ifn = new TreeNode("If");
+                    ifn.Nodes.Add(BuildTree(iff.Condition));
+                    var thenN = new TreeNode("Then");
+                    iff.ThenBranch.ForEach(s => thenN.Nodes.Add(BuildTree(s)));
+                    ifn.Nodes.Add(thenN);
+                    if (iff.ElseBranch != null)
+                    {
+                        var elseN = new TreeNode("Else");
+                        iff.ElseBranch.ForEach(s => elseN.Nodes.Add(BuildTree(s)));
+                        ifn.Nodes.Add(elseN);
+                    }
+                    return ifn;
+
+                case WhileNode w:
+                    var wn = new TreeNode("While");
+                    wn.Nodes.Add(BuildTree(w.Condition));
+                    var bodyW = new TreeNode("Body");
+                    w.Body.ForEach(s => bodyW.Nodes.Add(BuildTree(s)));
+                    wn.Nodes.Add(bodyW);
+                    return wn;
+
+                case DoWhileNode dw:
+                    var dwn = new TreeNode("DoWhile");
+                    var bodyD = new TreeNode("Body");
+                    dw.Body.ForEach(s => bodyD.Nodes.Add(BuildTree(s)));
+                    dwn.Nodes.Add(bodyD);
+                    var condD = new TreeNode("Condition");
+                    condD.Nodes.Add(BuildTree(dw.Condition));
+                    dwn.Nodes.Add(condD);
+                    return dwn;
+
+                case InputNode inp:
+                    return new TreeNode($"Input: {inp.Identifier}");
+
+                case OutputNode outp:
+                    var on = new TreeNode("Output");
+                    on.Nodes.Add(new TreeNode(outp.Value is ExpressionNode
+                                             ? ((ExpressionNode)outp.Value).ToString()
+                                             : outp.Value.ToString()));
+                    return on;
+
+                case BinaryOpNode b:
+                    var bn = new TreeNode($"Op {b.Operator}");
+                    bn.Nodes.Add(BuildTree(b.Left));
+                    bn.Nodes.Add(BuildTree(b.Right));
+                    return bn;
+
+                case LiteralNode lit:
+                    return new TreeNode($"Literal: {lit.Value}");
+
+                case IdentifierNode idn:
+                    return new TreeNode($"Id: {idn.Name}");
+            }
+            return new TreeNode(node.GetType().Name);
         }
 
         private void AplicarColoreado(List<Token> tokens)

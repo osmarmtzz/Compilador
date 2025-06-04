@@ -13,7 +13,8 @@ namespace IDE_COMPILADOR.AnalizadorLexico
         private readonly HashSet<string> _palabrasReservadas = new()
         {
             "if", "else", "end", "do", "while", "switch", "case",
-            "int", "float", "main", "cin", "cout"
+            "int", "float", "main", "cin", "cout","then","true",
+            "false",
         };
 
         /// Analiza la cadena de entrada y devuelve la lista de tokens y errores.

@@ -21,6 +21,7 @@ namespace IDE_COMPILADOR
         private TabControl tabAnalysis;
         private TabPage tabLexico;
         private TabPage tabSintactico;
+        private TreeView treeViewSintactico;
         private TabPage tabSemantico;
         private TabPage tabHashTable;
         private TabPage tabCodigoIntermedio;
@@ -156,6 +157,14 @@ namespace IDE_COMPILADOR
             this.tabSemantico.Text = "🧠 Semántico";
             this.tabHashTable.Text = "🔑 Hash Table";
             this.tabCodigoIntermedio.Text = "💻 Código Intermedio";
+
+            // inicializamos el TreeView para mostrar el AST
+            this.treeViewSintactico = new TreeView();
+            this.treeViewSintactico.Dock = DockStyle.Fill;
+            this.treeViewSintactico.BackColor = Color.Black;
+            this.treeViewSintactico.ForeColor = Color.White;
+            this.tabSintactico.Controls.Add(this.treeViewSintactico);
+
 
             this.tabAnalysis.TabPages.AddRange(new TabPage[] {
                 this.tabLexico, this.tabSintactico, this.tabSemantico, this.tabHashTable, this.tabCodigoIntermedio });
