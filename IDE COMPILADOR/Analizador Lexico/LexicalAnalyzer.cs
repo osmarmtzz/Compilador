@@ -14,7 +14,7 @@ namespace IDE_COMPILADOR.AnalizadorLexico
         {
             "if", "else", "end", "do", "while", "switch", "case",
             "int", "float", "main", "cin", "cout","then","true",
-            "false",
+            "false","until",
         };
 
         /// Analiza la cadena de entrada y devuelve la lista de tokens y errores.

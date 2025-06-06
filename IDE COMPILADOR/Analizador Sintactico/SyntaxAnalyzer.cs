@@ -311,25 +311,13 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             return new WhileNode(cond, body);
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        //  REPETICIÓN → do … while … end until … (punto y coma opcional)
-        //  (ParseRepetition llama a ParseDoUntil)
-        // ────────────────────────────────────────────────────────────────────
         private StatementNode ParseRepetition()
         {
             // 'do' ya fue consumido en ParseStatement()
             return ParseDoUntil();
         }
 
-        /// <summary>
-        /// Reconoce:
-        ///   do
-        ///       (cero o más sentencias)
-        ///       while <expresión>      ← bucle interno
-        ///           (cero o más sentencias dentro de este while)
-        ///       end                    ← cierra el while interno
-        ///   until <expresión>         ← cierra el do (punto y coma opcional)
-        /// </summary>
+ 
         private DoUntilNode ParseDoUntil()
         {
             // 1) Recolectar las sentencias del bloque "do" (hasta 'while' interno)
@@ -381,18 +369,18 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             }
 
             // 6) Consumir 'until' que cierra el 'do'
-            if (CurrentToken().Valor.Equals("until", StringComparison.Ordinal))
+            if (MatchKeyword("until"))
             {
-                Advance(); // consumimos literalmente 'until'
+                // OK: avanzó el token ‘until’
             }
             else
             {
                 var t4 = CurrentToken();
                 Error($"Se esperaba 'until' para cerrar 'do' pero se encontró '{t4.Valor}'", t4.Linea, t4.Columna);
-                // Intentamos sincronizar hasta el siguiente 'until'
                 if (Synchronize("until"))
                     Advance();
             }
+
 
             // 7) Parsear condición del 'until'
             var condUntil = ParseExpression();

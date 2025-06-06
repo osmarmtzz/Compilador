@@ -715,6 +715,40 @@ namespace IDE_COMPILADOR
                     dwn.Nodes.Add(condD);
                     return dwn;
 
+                case DoUntilNode du:
+                    // ------------------------------------------------
+                    var duNode = new TreeNode("DoUntil");
+
+                    // 1) DoBody
+                    var bodyDoNode = new TreeNode("DoBody");
+                    foreach (var stmt in du.BodyDo)
+                        bodyDoNode.Nodes.Add(BuildTree(stmt));
+                    duNode.Nodes.Add(bodyDoNode);
+
+                    // 2) WhileCondition (la condición interna del “while” dentro del do)
+                    var condWhileNode = new TreeNode("WhileCondition");
+                    condWhileNode.Nodes.Add(BuildTree(du.ConditionWhile));
+                    duNode.Nodes.Add(condWhileNode);
+
+                    // 3) WhileBody (el cuerpo del while interno)
+                    var bodyWhileNode = new TreeNode("WhileBody");
+                    foreach (var stmt2 in du.BodyWhile)
+                        bodyWhileNode.Nodes.Add(BuildTree(stmt2));
+                    duNode.Nodes.Add(bodyWhileNode);
+
+                    // 4) UntilCondition (la condición que cierra el do)
+                    var condUntilNode = new TreeNode("UntilCondition");
+                    condUntilNode.Nodes.Add(BuildTree(du.ConditionUntil));
+                    duNode.Nodes.Add(condUntilNode);
+
+                    return duNode;
+                case UnaryPostfixNode up:
+                    // Aquí reemplazas el código viejo por el snippet de arriba
+                    var upNode = new TreeNode($"Postfix: {up.Identifier} {up.Operator}");
+                    upNode.Nodes.Add(new TreeNode($"Id: {up.Identifier}"));
+                    upNode.Nodes.Add(new TreeNode("Literal: 1"));
+                    return upNode;
+
                 case InputNode inp:
                     return new TreeNode($"Input: {inp.Identifier}");
 
