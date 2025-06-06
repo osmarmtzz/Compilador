@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using IDE_COMPILADOR.AnalizadorLexico;
 using IDE_COMPILADOR.AnalizadorSintactico.AST;
 
@@ -96,7 +97,7 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             }
         }
 
-        // declaracion_variable → tipo identificador ;
+        // declaracion_variable → tipo identificador ( , identificador )* ;
         private VariableDeclarationNode ParseVariableDeclaration()
         {
             string tipo = ParseType();
@@ -180,15 +181,35 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             return statements;
         }
 
-        // sentencia → seleccion | iteracion | repeticion | sent_in | sent_out | asignacion
+        // sentencia → seleccion | iteracion | repeticion | sent_in | sent_out | postfix | asignacion
         private StatementNode ParseStatement()
         {
-            if (MatchKeyword("if")) return ParseSelection();
-            if (MatchKeyword("while")) return ParseIteration();
-            if (MatchKeyword("do")) return ParseRepetition();
-            if (MatchKeyword("cin")) return ParseSentIn();
-            if (MatchKeyword("cout")) return ParseSentOut();
-            if (CheckType("Identificador") && PeekNextIs("=")) return ParseAssignment();
+            if (MatchKeyword("if"))
+                return ParseSelection();
+
+            if (MatchKeyword("while"))
+                return ParseIteration();
+
+            if (MatchKeyword("do"))
+                return ParseRepetition();   // llama a ParseDoUntil()
+
+            if (MatchKeyword("cin"))
+                return ParseSentIn();
+
+            if (MatchKeyword("cout"))
+                return ParseSentOut();
+
+            // post‐incremento: id ++ ;
+            if (CheckType("Identificador") && PeekNextIs("++"))
+                return ParsePostfixIncrement();
+
+            // post‐decremento: id -- ;
+            if (CheckType("Identificador") && PeekNextIs("--"))
+                return ParsePostfixDecrement();
+
+            // asignación normal: id = expresión ;
+            if (CheckType("Identificador") && PeekNextIs("="))
+                return ParseAssignment();
 
             var t = CurrentToken();
             Error($"Sentencia desconocida o mal formateada comenzando en '{t.Valor}'", t.Linea, t.Columna);
@@ -231,7 +252,9 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             return new AssignmentNode(id, expr);
         }
 
-        // seleccion → if expresion then lista_sentencias [ else lista_sentencias ] end
+        // ────────────────────────────────────────────────────────────────────
+        //  SELECCIÓN → if expresión then lista_sentencias [ else lista_sentencias ] end
+        // ────────────────────────────────────────────────────────────────────
         private IfNode ParseSelection()
         {
             var cond = ParseExpression();
@@ -265,7 +288,9 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             return new IfNode(cond, thenStmts, elseStmts);
         }
 
-        // iteracion → while expresion lista_sentencias end
+        // ────────────────────────────────────────────────────────────────────
+        //  ITERACIÓN → while expresión lista_sentencias end
+        // ────────────────────────────────────────────────────────────────────
         private WhileNode ParseIteration()
         {
             var cond = ParseExpression();
@@ -286,51 +311,167 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             return new WhileNode(cond, body);
         }
 
-        // repeticion → do lista_sentencias_simple while expresion
-        // Cambiamos para que el parser reconozca inmediatamente el 'while' de clausura.
-        private DoWhileNode ParseRepetition()
+        // ────────────────────────────────────────────────────────────────────
+        //  REPETICIÓN → do … while … end until … (punto y coma opcional)
+        //  (ParseRepetition llama a ParseDoUntil)
+        // ────────────────────────────────────────────────────────────────────
+        private StatementNode ParseRepetition()
         {
-            // 'do' ya consumido
+            // 'do' ya fue consumido en ParseStatement()
+            return ParseDoUntil();
+        }
 
-            // 1) Parsear exactamente UNA sentencia como "cuerpo" del do.
-            var bodyList = new List<StatementNode>();
-            var firstStmt = ParseStatement();
-            if (firstStmt != null)
-                bodyList.Add(firstStmt);
-            else
+        /// <summary>
+        /// Reconoce:
+        ///   do
+        ///       (cero o más sentencias)
+        ///       while <expresión>      ← bucle interno
+        ///           (cero o más sentencias dentro de este while)
+        ///       end                    ← cierra el while interno
+        ///   until <expresión>         ← cierra el do (punto y coma opcional)
+        /// </summary>
+        private DoUntilNode ParseDoUntil()
+        {
+            // 1) Recolectar las sentencias del bloque "do" (hasta 'while' interno)
+            var bodyDo = new List<StatementNode>();
+            while (!CheckKeyword("while") && !IsAtEnd())
             {
-                var tBody = CurrentToken();
-                Error($"Dentro de 'do' se esperaba una sentencia pero se encontró '{tBody.Valor}'", tBody.Linea, tBody.Columna);
+                var stmt = ParseStatement();
+                if (stmt != null)
+                    bodyDo.Add(stmt);
+                else
+                    Advance();
             }
 
-            // 2) Ahora consumir el 'while' que cierra el 'do'
+            // 2) Consumir 'while' interno: si no está, marcar error
             if (!MatchKeyword("while"))
             {
                 var t = CurrentToken();
-                Error($"Se esperaba 'while' después de 'do' pero se encontró '{t.Valor}'", t.Linea, t.Columna);
-                Synchronize("while");
+                Error($"Se esperaba 'while' para el bucle interno dentro de 'do' pero se encontró '{t.Valor}'", t.Linea, t.Columna);
+                // Seguimos sin sincronizar, para intentar parsear la condición igual
             }
 
-            // 3) Condición del do...while
-            var cond = ParseExpression();
-            if (cond == null)
+            // 3) Parsear condición del 'while' interno
+            var condWhile = ParseExpression();
+            if (condWhile == null)
             {
                 var t2 = CurrentToken();
-                Error($"Se esperaba expresión en 'while' de 'do...while' pero se encontró '{t2.Valor}'", t2.Linea, t2.Columna);
+                Error($"Se esperaba expresión después de 'while' interno pero se encontró '{t2.Valor}'", t2.Linea, t2.Columna);
+                condWhile = new LiteralNode("false");
             }
 
-            return new DoWhileNode(bodyList, cond);
+            // 4) Recolectar sentencias dentro del while interno (hasta encontrar 'end')
+            var bodyWhile = new List<StatementNode>();
+            while (!CheckKeyword("end") && !IsAtEnd())
+            {
+                var stmt2 = ParseStatement();
+                if (stmt2 != null)
+                    bodyWhile.Add(stmt2);
+                else
+                    Advance();
+            }
+
+            // 5) Consumir 'end' que cierra el while interno
+            if (!MatchKeyword("end"))
+            {
+                var t3 = CurrentToken();
+                Error($"Se esperaba 'end' para cerrar el bucle interno, pero se encontró '{t3.Valor}'", t3.Linea, t3.Columna);
+                // Sincronizamos al próximo 'until' para no quedarnos atorados
+                Synchronize("until");
+            }
+
+            // 6) Consumir 'until' que cierra el 'do'
+            if (CurrentToken().Valor.Equals("until", StringComparison.Ordinal))
+            {
+                Advance(); // consumimos literalmente 'until'
+            }
+            else
+            {
+                var t4 = CurrentToken();
+                Error($"Se esperaba 'until' para cerrar 'do' pero se encontró '{t4.Valor}'", t4.Linea, t4.Columna);
+                // Intentamos sincronizar hasta el siguiente 'until'
+                if (Synchronize("until"))
+                    Advance();
+            }
+
+            // 7) Parsear condición del 'until'
+            var condUntil = ParseExpression();
+            if (condUntil == null)
+            {
+                var t5 = CurrentToken();
+                Error($"Se esperaba expresión después de 'until' pero se encontró '{t5.Valor}'", t5.Linea, t5.Columna);
+                condUntil = new LiteralNode("false");
+            }
+
+            // 8) Punto y coma opcional: si aparece, lo consumimos; si no, seguimos sin error extra
+            if (MatchSymbol(";"))
+            {
+                // Consumimos el ';'
+            }
+
+            // 9) Devolver el nodo DoUntilNode
+            return new DoUntilNode(bodyDo, condWhile, bodyWhile, condUntil);
         }
 
-        // sent_in → cin >> id ;
+        // ────────────────────────────────────────────────────────────────────
+        //  POST‐INCREMENTO: id++ ;
+        // ────────────────────────────────────────────────────────────────────
+        private StatementNode ParsePostfixIncrement()
+        {
+            string id = CurrentToken().Valor;
+            Advance();  // consumimos el identificador
+
+            if (!MatchOperator("++"))
+            {
+                var t = CurrentToken();
+                Error($"Se esperaba '++' después de '{id}' pero se encontró '{t.Valor}'", t.Linea, t.Columna);
+            }
+
+            if (!MatchSymbol(";"))
+            {
+                var t2 = CurrentToken();
+                Error($"Se esperaba ';' después de '{id}++' pero se encontró '{t2.Valor}'", t2.Linea, t2.Columna);
+                Synchronize(";");
+            }
+
+            return new UnaryPostfixNode(id, "++");
+        }
+
+        // ────────────────────────────────────────────────────────────────────
+        //  POST‐DECREMENTO: id-- ;
+        // ────────────────────────────────────────────────────────────────────
+        private StatementNode ParsePostfixDecrement()
+        {
+            string id = CurrentToken().Valor;
+            Advance(); // consumimos el identificador
+
+            if (!MatchOperator("--"))
+            {
+                var t = CurrentToken();
+                Error($"Se esperaba '--' después de '{id}' pero se encontró '{t.Valor}'", t.Linea, t.Columna);
+            }
+
+            if (!MatchSymbol(";"))
+            {
+                var t2 = CurrentToken();
+                Error($"Se esperaba ';' después de '{id}--' pero se encontró '{t2.Valor}'", t2.Linea, t2.Columna);
+                Synchronize(";");
+            }
+
+            return new UnaryPostfixNode(id, "--");
+        }
+
+        // ────────────────────────────────────────────────────────────────────
+        //  sent_in → cin >> id ;
+        // ────────────────────────────────────────────────────────────────────
         private InputNode ParseSentIn()
         {
             // 'cin' ya consumido
 
-            // 1) '>>' → ahora chequeamos como dos operadores “>”
+            // 1) '>>'
             if (MatchOperator(">") && MatchOperator(">"))
             {
-                // OK: consumimos dos tokens “>”
+                // OK: consumimos dos tokens ">"
             }
             else
             {
@@ -362,15 +503,17 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             return new InputNode(id);
         }
 
-        // sent_out → cout << salida [;]
+        // ────────────────────────────────────────────────────────────────────
+        //  sent_out → cout << salida [;]
+        // ────────────────────────────────────────────────────────────────────
         private OutputNode ParseSentOut()
         {
             // 'cout' ya consumido
 
-            // 1) '<<' → como dos operadores “<”
+            // 1) '<<'
             if (MatchOperator("<") && MatchOperator("<"))
             {
-                // OK: consumimos dos tokens “<”
+                // OK: consumimos dos tokens "<"
             }
             else
             {
@@ -442,7 +585,7 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             }
         }
 
-        // expresion → relacional ( (&&||) relacional )*
+        // expresion → relacional ( (&& ||) relacional )*
         private ExpressionNode ParseExpression()
         {
             var left = ParseRelational();
@@ -799,6 +942,128 @@ namespace IDE_COMPILADOR.AnalizadorSintactico
             if (t == null || !t.Tipo.Equals("OperadorLogico", StringComparison.OrdinalIgnoreCase))
                 return false;
             return t.Valor is "<" or "<=" or ">" or ">=" or "==" or "!=";
+        }
+
+        #endregion
+
+        #region Construir árbol para TreeView
+
+        public System.Windows.Forms.TreeNode BuildTree(ASTNode node)
+        {
+            switch (node)
+            {
+                case ProgramNode p:
+                    var root = new System.Windows.Forms.TreeNode("Program");
+                    foreach (var d in p.Declarations)
+                        root.Nodes.Add(BuildTree(d));
+                    return root;
+
+                case VariableDeclarationNode vd:
+                    var vNode = new System.Windows.Forms.TreeNode($"VarDecl: {vd.TypeName}");
+                    foreach (var id in vd.Identifiers)
+                        vNode.Nodes.Add(new System.Windows.Forms.TreeNode(id));
+                    return vNode;
+
+                case StatementListNode sl:
+                    var sList = new System.Windows.Forms.TreeNode("StatementList");
+                    foreach (var st in sl.Statements)
+                        sList.Nodes.Add(BuildTree(st));
+                    return sList;
+
+                case AssignmentNode a:
+                    var an = new System.Windows.Forms.TreeNode($"Assign: {a.Identifier}");
+                    an.Nodes.Add(BuildTree(a.Expression));
+                    return an;
+
+                case IfNode iff:
+                    var ifn = new System.Windows.Forms.TreeNode("If");
+                    ifn.Nodes.Add(BuildTree(iff.Condition));
+                    var thenN = new System.Windows.Forms.TreeNode("Then");
+                    iff.ThenBranch.ForEach(s => thenN.Nodes.Add(BuildTree(s)));
+                    ifn.Nodes.Add(thenN);
+                    if (iff.ElseBranch != null)
+                    {
+                        var elseN = new System.Windows.Forms.TreeNode("Else");
+                        iff.ElseBranch.ForEach(s => elseN.Nodes.Add(BuildTree(s)));
+                        ifn.Nodes.Add(elseN);
+                    }
+                    return ifn;
+
+                case WhileNode w:
+                    var wn = new System.Windows.Forms.TreeNode("While");
+                    wn.Nodes.Add(BuildTree(w.Condition));
+                    var bodyW = new System.Windows.Forms.TreeNode("Body");
+                    w.Body.ForEach(s => bodyW.Nodes.Add(BuildTree(s)));
+                    wn.Nodes.Add(bodyW);
+                    return wn;
+
+                case DoWhileNode dw:
+                    var dwn = new System.Windows.Forms.TreeNode("DoWhile");
+                    var bodyD = new System.Windows.Forms.TreeNode("Body");
+                    dw.Body.ForEach(s => bodyD.Nodes.Add(BuildTree(s)));
+                    dwn.Nodes.Add(bodyD);
+                    var condD = new System.Windows.Forms.TreeNode("Condition");
+                    condD.Nodes.Add(BuildTree(dw.Condition));
+                    dwn.Nodes.Add(condD);
+                    return dwn;
+
+                case InputNode inp:
+                    return new System.Windows.Forms.TreeNode($"Input: {inp.Identifier}");
+
+                case OutputNode outp:
+                    var on = new System.Windows.Forms.TreeNode("Output");
+                    on.Nodes.Add(new System.Windows.Forms.TreeNode(
+                        outp.Value is ExpressionNode
+                            ? ((ExpressionNode)outp.Value).ToString()
+                            : outp.Value.ToString()));
+                    return on;
+
+                case BinaryOpNode b:
+                    var bn = new System.Windows.Forms.TreeNode($"Op {b.Operator}");
+                    bn.Nodes.Add(BuildTree(b.Left));
+                    bn.Nodes.Add(BuildTree(b.Right));
+                    return bn;
+
+                case LiteralNode lit:
+                    return new System.Windows.Forms.TreeNode($"Literal: {lit.Value}");
+
+                case IdentifierNode idn:
+                    return new System.Windows.Forms.TreeNode($"Id: {idn.Name}");
+
+                case UnaryPostfixNode up:
+                    // Muestra "Postfix: a ++" o "Postfix: c --"
+                    return new System.Windows.Forms.TreeNode($"Postfix: {up.Identifier} {up.Operator}");
+
+                case DoUntilNode du:
+                    var duNode = new System.Windows.Forms.TreeNode("DoUntil");
+
+                    // 1) BodyDo
+                    var bodyDoNode = new System.Windows.Forms.TreeNode("DoBody");
+                    foreach (var st in du.BodyDo)
+                        bodyDoNode.Nodes.Add(BuildTree(st));
+                    duNode.Nodes.Add(bodyDoNode);
+
+                    // 2) ConditionWhile
+                    var condWhileNode = new System.Windows.Forms.TreeNode("WhileCondition");
+                    condWhileNode.Nodes.Add(BuildTree(du.ConditionWhile));
+                    duNode.Nodes.Add(condWhileNode);
+
+                    // 3) BodyWhile
+                    var bodyWhileNode = new System.Windows.Forms.TreeNode("WhileBody");
+                    foreach (var st2 in du.BodyWhile)
+                        bodyWhileNode.Nodes.Add(BuildTree(st2));
+                    duNode.Nodes.Add(bodyWhileNode);
+
+                    // 4) ConditionUntil
+                    var condUntilNode = new System.Windows.Forms.TreeNode("UntilCondition");
+                    condUntilNode.Nodes.Add(BuildTree(du.ConditionUntil));
+                    duNode.Nodes.Add(condUntilNode);
+
+                    return duNode;
+
+                default:
+                    return new System.Windows.Forms.TreeNode(node.GetType().Name);
+            }
         }
 
         #endregion

@@ -625,6 +625,8 @@ namespace IDE_COMPILADOR
                             treeViewSintactico.Nodes.Clear();
                             treeViewSintactico.Nodes.Add(BuildTree(ast));
                             tabAnalysis.SelectedTab = tabSintactico;
+                            treeViewSintactico.ExpandAll();
+                            tabAnalysis.SelectedTab = tabSintactico;
                         }
                         break;
                     }
